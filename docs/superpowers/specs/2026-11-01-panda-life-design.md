@@ -19,7 +19,9 @@ There is no timer on a mission, no losing and no penalty. Success looks like a k
 - Sushi can go inside any house just by walking through the front door. Inside is one room with a carpet, a bench, a table, chairs, a small kitchen, plants, a bookshelf with random books, and kawaii Japanese decorations.
 - Homes look like Japanese akiya, outside and in: old country houses, taken as cosy and kawaii rather than run down.
 - Relaxing background music, Japanese-themed and kawaii, like Stardew Valley: atmospheric, with no voices. It changes each time Sushi enters a different home.
+- There is no mini map. Coins and the Inbox, Knapsack and Friends buttons sit in one line along the top, shrinking to pictures on mobile.
 - A button changes the music.
+- Music is off by default, until the player turns it on.
 - Every character, Sushi included, carries a knapsack on their back that can hold an inventory of items. All are empty for now, and the knapsack is drawn so it doesn't get in the way.
 - A special building, the village shop, where coins buy and sell the objects in a knapsack. It stocks 100 everyday objects from a Japanese home, mostly casual things like books, cooking tools and food, each priced in whole coins.
 - Friends run on simple rules: they give each other bamboo missions, fulfil them for coins, and spend the coins at the shop.

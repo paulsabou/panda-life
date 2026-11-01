@@ -6,23 +6,13 @@ import type { Mission, MissionBoard, MissionEvent } from '../game/missions';
 import { buy, sell, sellPrice, type Deal } from '../game/shop';
 import { FRIENDS } from '../game/friends';
 import type { VillageLife } from '../world/life';
-import { WORLD_H, WORLD_W } from '../world/iso';
 
 const COIN = '<span class="coin"></span>';
 const BAMBOO = '🎋';
-const MAP_W = 472;
-const MAP_H = Math.round((MAP_W * WORLD_H) / WORLD_W);
 const TOAST_MS = 3200;
 const PARTY_MS = 3400;
 const SELL_TAB = 'Sell';
 const FRIENDS_REFRESH_MS = 1000;
-
-export interface MapMark {
-  x: number;
-  y: number;
-  colour: string;
-  size: number;
-}
 
 export interface HudActions {
   turn(step: number): void;
@@ -38,7 +28,6 @@ export class Hud {
   private coins = html('<div class="pill coins"></div>');
   private quest = html('<div class="pill quest" hidden></div>');
   private badge = html('<span class="badge" hidden></span>');
-  private map = html<HTMLCanvasElement>(`<canvas class="minimap" width="${MAP_W}" height="${MAP_H}"></canvas>`);
   private overlay = document.createElement('div');
   private toastBox = document.createElement('div');
   private inboxOpen = false;
@@ -48,10 +37,9 @@ export class Hud {
   private controls!: HTMLElement;
   private menuButton = html<HTMLButtonElement>('<button class="pill menu-button" aria-label="Menu" aria-expanded="false">☰</button>');
   private shopTab: Category | typeof SELL_TAB = 'Food';
-  private shopButton = html<HTMLButtonElement>('<button class="pill" hidden>🛍 Shop (B)</button>');
+  private shopButton = html<HTMLButtonElement>('<button class="pill" aria-label="Shop" hidden>🛍<span class="word">Shop</span></button>');
   private partyTimer = 0;
   private place = html('<div class="pill place" hidden></div>');
-  private mapBase: CanvasImageSource | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -74,38 +62,17 @@ export class Hud {
     return this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen;
   }
 
-  /** Puts the map picture in the corner. The dots go on top in `drawMap`. */
-  setMapBase(image: CanvasImageSource): void {
-    this.mapBase = image;
-  }
-
-  drawMap(marks: MapMark[]): void {
-    const c = this.map.getContext('2d')!;
-    c.clearRect(0, 0, MAP_W, MAP_H);
-    if (this.mapBase) c.drawImage(this.mapBase, 0, 0, MAP_W, MAP_H);
-    const scale = MAP_W / WORLD_W;
-    for (const m of marks) {
-      c.beginPath();
-      c.arc(m.x * scale, m.y * scale, m.size, 0, Math.PI * 2);
-      c.fillStyle = m.colour;
-      c.fill();
-      c.lineWidth = 2;
-      c.strokeStyle = '#fff';
-      c.stroke();
-    }
-  }
-
   private build(): void {
-    const topLeft = html('<div class="top-left"></div>');
-    const inboxButton = html<HTMLButtonElement>(`<button class="pill inbox-button">📬 Inbox</button>`);
+    const topBar = html('<div class="top-bar"></div>');
+    const inboxButton = html<HTMLButtonElement>(`<button class="pill inbox-button" aria-label="Inbox">📬<span class="word">Inbox</span></button>`);
     inboxButton.append(this.badge);
     inboxButton.onclick = () => this.toggleInbox();
-    const knapsackButton = html<HTMLButtonElement>('<button class="pill knapsack-button">🎒 Knapsack</button>');
+    const knapsackButton = html<HTMLButtonElement>('<button class="pill knapsack-button" aria-label="Knapsack">🎒<span class="word">Knapsack</span></button>');
     knapsackButton.onclick = () => this.toggleKnapsack();
     this.shopButton.onclick = () => this.toggleShop();
-    const friendsButton = html<HTMLButtonElement>('<button class="pill">👥 Friends</button>');
+    const friendsButton = html<HTMLButtonElement>('<button class="pill" aria-label="Friends">👥<span class="word">Friends</span></button>');
     friendsButton.onclick = () => this.toggleFriends();
-    topLeft.append(this.coins, this.quest, inboxButton, knapsackButton, friendsButton, this.shopButton);
+    topBar.append(this.coins, inboxButton, knapsackButton, friendsButton, this.shopButton, this.place);
 
     const controls = html('<div class="controls"></div>');
     const add = (label: string, run: (button: HTMLButtonElement) => void, extra = '') => {
@@ -144,7 +111,7 @@ export class Hud {
       if (!this.controls.contains(target) && !this.menuButton.contains(target)) this.closeMenu();
     });
 
-    this.root.append(topLeft, this.map, this.place, this.menuButton, controls, hint, this.overlay, this.toastBox);
+    this.root.append(topBar, this.quest, this.menuButton, controls, hint, this.overlay, this.toastBox);
   }
 
   /** Shows where Sushi is indoors. The map and the turn buttons only make sense outside. */
@@ -248,6 +215,7 @@ export class Hud {
     this.badge.textContent = String(inbox.length);
     this.badge.hidden = inbox.length === 0;
     this.quest.hidden = !active;
+    this.root.classList.toggle('on-mission', !!active);
     if (active) {
       const name = friendById(active.mission.friend).name;
       const percent = Math.round((active.collected / active.mission.sticks) * 100);

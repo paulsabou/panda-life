@@ -2,7 +2,7 @@ import { MusicPlayer } from './music/player';
 import { THEMES, nextTheme, type ThemeId } from './music/compose';
 
 const MUTE_KEY = 'panda-life-muted';
-const MUSIC_OFF_KEY = 'panda-life-music-off';
+const MUSIC_ON_KEY = 'panda-life-music-on';
 
 /** Small cheerful sounds made in the browser, so the game ships no audio files. */
 export class Sounds {
@@ -11,7 +11,8 @@ export class Sounds {
   private ringTimer: number | null = null;
   private music: MusicPlayer | null = null;
   private theme: ThemeId = 'village';
-  musicOff = localStorage.getItem(MUSIC_OFF_KEY) === '1';
+  /** Music stays off until the player asks for it. */
+  musicOff = localStorage.getItem(MUSIC_ON_KEY) !== '1';
 
   /** Browsers only allow sound after the player has touched something. */
   unlock(): void {
@@ -36,7 +37,7 @@ export class Sounds {
 
   toggleMusic(): boolean {
     this.musicOff = !this.musicOff;
-    localStorage.setItem(MUSIC_OFF_KEY, this.musicOff ? '1' : '0');
+    localStorage.setItem(MUSIC_ON_KEY, this.musicOff ? '0' : '1');
     this.music?.setEnabled(!this.musicOff);
     return this.musicOff;
   }

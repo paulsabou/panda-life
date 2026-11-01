@@ -21,7 +21,7 @@ import {
 import type { Sounds } from '../audio';
 import type { MissionBoard } from '../game/missions';
 import { PICK_RANGE, REGROW_SECONDS, Villager, type Plan, type VillageLife } from '../world/life';
-import type { Hud, MapMark } from '../ui/hud';
+import type { Hud } from '../ui/hud';
 import { Collision } from '../world/collision';
 import { depthAmong } from '../world/depth';
 import {
@@ -56,7 +56,6 @@ const BUBBLES: Partial<Record<Plan['kind'], string>> = {
   collect: '🎋',
   'to-shop': '🛍',
 };
-const MAP_REFRESH_SECONDS = 0.2;
 const FADE_MS = 160;
 const TALLEST_WALL = 150;
 
@@ -123,7 +122,6 @@ export class VillageScene extends Phaser.Scene {
   private shop!: House;
   private shopTag!: Phaser.GameObjects.Image;
   private clock = 0;
-  private mapClock = 0;
 
   constructor(private deps: SceneDeps) {
     super('village');
@@ -227,11 +225,6 @@ export class VillageScene extends Phaser.Scene {
     this.useDoors(push);
     this.updateActors();
     this.updateBamboo();
-    this.mapClock -= seconds;
-    if (this.mapClock <= 0) {
-      this.mapClock = MAP_REFRESH_SECONDS;
-      this.deps.hud.drawMap(this.mapMarks());
-    }
   }
 
   private addStaticTextures(): void {
@@ -295,7 +288,6 @@ export class VillageScene extends Phaser.Scene {
   private placeWorld(): void {
     const r = this.rotation;
     this.ground.setTexture(this.groundKey(r));
-    this.deps.hud.setMapBase(this.textures.get(this.groundKey(r)).getSourceImage() as HTMLCanvasElement);
 
     for (const { house, image } of this.houses) {
       const a = rotate(r, house.x, house.y);
@@ -498,24 +490,5 @@ export class VillageScene extends Phaser.Scene {
   private celebrate(): void {
     const image = this.sushi.image;
     this.tweens.add({ targets: image, scaleX: CHARACTER_SCALE * 1.14, scaleY: CHARACTER_SCALE * 0.9, duration: 130, yoyo: true, repeat: 2 });
-  }
-
-  private mapMarks(): MapMark[] {
-    const r = this.rotation;
-    const marks: MapMark[] = this.houses.map(({ house }) => {
-      const [x, y] = project(r, house.x + HOUSE_SIZE / 2, house.y + HOUSE_SIZE / 2);
-      return house.isShop ? { x, y, colour: '#ffd166', size: 7 } : { x, y, colour: '#b98757', size: 5 };
-    });
-    for (const clump of this.bamboo) {
-      if (!clump.marker.visible) continue;
-      const [x, y] = project(r, clump.tree.x + 0.5, clump.tree.y + 0.5);
-      marks.push({ x, y, colour: '#4fa56d', size: 4 });
-    }
-    for (const actor of this.actors) {
-      if (actor === this.sushi || !actor.image.visible) continue;
-      marks.push({ x: actor.image.x, y: actor.image.y, colour: '#8fa9f0', size: 4 });
-    }
-    marks.push({ x: this.sushi.image.x, y: this.sushi.image.y, colour: '#ff5c92', size: 6 });
-    return marks;
   }
 }

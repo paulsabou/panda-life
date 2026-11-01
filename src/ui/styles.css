@@ -72,18 +72,31 @@ button {
   font-weight: 700;
 }
 
-.top-left {
+.top-bar {
   position: absolute;
   left: 14px;
+  right: 14px;
   top: 14px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-bar .pill {
+  flex: none;
+  white-space: nowrap;
+}
+
+.top-bar button {
+  font-size: 15px;
+}
+
+.word {
+  margin-left: 6px;
 }
 
 .coins {
-  font-size: 22px;
+  font-size: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -104,6 +117,9 @@ button {
 }
 
 .quest {
+  position: absolute;
+  left: 14px;
+  top: 70px;
   font-size: 15px;
   min-width: 190px;
   border-radius: 18px;
@@ -150,17 +166,6 @@ button {
   text-align: center;
 }
 
-.minimap {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  width: 236px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: var(--shadow);
-  display: block;
-}
-
 .controls {
   position: absolute;
   left: 50%;
@@ -192,18 +197,19 @@ button {
   background: #fff5f8;
 }
 
-.place {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  font-size: 17px;
+.top-bar .place {
+  flex: 0 1 auto;
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 16px;
 }
 
 .place[hidden] {
   display: none;
 }
 
-.indoors .minimap,
 .indoors .turn {
   display: none;
 }
@@ -225,7 +231,9 @@ button {
 .toast {
   position: absolute;
   left: 50%;
-  top: 18px;
+  top: 70px;
+  max-width: calc(100vw - 28px);
+  box-sizing: border-box;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -233,6 +241,10 @@ button {
   white-space: nowrap;
   font-size: 15px;
   animation: drop 0.25s ease;
+}
+
+.on-mission .toast {
+  top: 132px;
 }
 
 .toast img {
@@ -627,9 +639,58 @@ button {
   }
 }
 
-@media (max-width: 640px) {
-  .minimap {
-    width: 120px;
+/* Too narrow for words on the top line: just the pictures, slightly smaller. */
+@media (max-width: 720px), (pointer: coarse) and (max-height: 500px) {
+  .word {
+    display: none;
+  }
+
+  .top-bar {
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    gap: 6px;
+  }
+
+  .top-bar .pill {
+    padding: 8px 11px;
+  }
+
+  .top-bar button {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .coins {
+    font-size: 17px;
+  }
+
+  /* No room for the place name up top, so it sits low down, clear of the buttons. */
+  .top-bar .place {
+    position: fixed;
+    left: 10px;
+    bottom: 124px;
+    margin: 0;
+    max-width: calc(100vw - 90px);
+    font-size: 14px;
+  }
+
+  .quest {
+    left: 10px;
+    top: 58px;
+    min-width: 160px;
+    padding: 7px 12px;
+    font-size: 14px;
+  }
+
+  .toast {
+    top: 58px;
+    white-space: normal;
+    width: max-content;
+  }
+
+  .on-mission .toast {
+    top: 116px;
   }
 }
 
@@ -682,6 +743,11 @@ button {
     font-size: 16px;
     padding: 12px 18px;
     text-align: left;
+  }
+
+  /* With the buttons folded away, the place name can have the bottom corner. */
+  .top-bar .place {
+    bottom: 22px;
   }
 
   /* Keyboard shortcuts mean nothing on a phone. */
