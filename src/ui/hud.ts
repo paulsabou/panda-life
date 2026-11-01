@@ -4,6 +4,8 @@ import { CATALOGUE, CATEGORIES, itemById, type Category } from '../game/catalogu
 import { KNAPSACK_SLOTS } from '../game/knapsack';
 import type { Mission, MissionBoard, MissionEvent } from '../game/missions';
 import { buy, sell, sellPrice, type Deal } from '../game/shop';
+import { FRIENDS } from '../game/friends';
+import type { VillageLife } from '../world/life';
 import { WORLD_H, WORLD_W } from '../world/iso';
 
 const COIN = '<span class="coin"></span>';
@@ -13,6 +15,7 @@ const MAP_H = Math.round((MAP_W * WORLD_H) / WORLD_W);
 const TOAST_MS = 3200;
 const PARTY_MS = 3400;
 const SELL_TAB = 'Sell';
+const FRIENDS_REFRESH_MS = 1000;
 
 export interface MapMark {
   x: number;
@@ -41,6 +44,9 @@ export class Hud {
   private inboxOpen = false;
   private knapsackOpen = false;
   private shopOpen = false;
+  private friendsOpen = false;
+  private controls!: HTMLElement;
+  private menuButton = html<HTMLButtonElement>('<button class="pill menu-button" aria-label="Menu" aria-expanded="false">☰</button>');
   private shopTab: Category | typeof SELL_TAB = 'Food';
   private shopButton = html<HTMLButtonElement>('<button class="pill" hidden>🛍 Shop (B)</button>');
   private partyTimer = 0;
@@ -50,6 +56,7 @@ export class Hud {
   constructor(
     private root: HTMLElement,
     private board: MissionBoard,
+    private life: VillageLife,
     private sounds: Sounds,
     private portraits: Record<FriendId, string>,
     private shopkeeper: string,
@@ -59,11 +66,12 @@ export class Hud {
     board.subscribe((event) => this.onMission(event));
     this.refresh();
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.setInterval(() => this.friendsOpen && this.renderFriends(), FRIENDS_REFRESH_MS);
   }
 
   /** True while the player is busy in a screen, when a call shouldn't interrupt. */
   get panelOpen(): boolean {
-    return this.inboxOpen || this.knapsackOpen || this.shopOpen;
+    return this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen;
   }
 
   /** Puts the map picture in the corner. The dots go on top in `drawMap`. */
@@ -95,7 +103,9 @@ export class Hud {
     const knapsackButton = html<HTMLButtonElement>('<button class="pill knapsack-button">🎒 Knapsack</button>');
     knapsackButton.onclick = () => this.toggleKnapsack();
     this.shopButton.onclick = () => this.toggleShop();
-    topLeft.append(this.coins, this.quest, inboxButton, knapsackButton, this.shopButton);
+    const friendsButton = html<HTMLButtonElement>('<button class="pill">👥 Friends</button>');
+    friendsButton.onclick = () => this.toggleFriends();
+    topLeft.append(this.coins, this.quest, inboxButton, knapsackButton, friendsButton, this.shopButton);
 
     const controls = html('<div class="controls"></div>');
     const add = (label: string, run: (button: HTMLButtonElement) => void, extra = '') => {
@@ -103,12 +113,13 @@ export class Hud {
       button.onclick = () => {
         run(button);
         button.blur();
+        this.closeMenu();
       };
       controls.append(button);
     };
-    add('↺ Turn left (Q)', () => this.actions.turn(-1), 'turn');
-    add('Turn right (E) ↻', () => this.actions.turn(1), 'turn');
-    if (document.fullscreenEnabled) add('⛶ Full screen (F)', () => this.toggleFullScreen());
+    add('↺ Turn left <i>(Q)</i>', () => this.actions.turn(-1), 'turn');
+    add('Turn right <i>(E)</i> ↻', () => this.actions.turn(1), 'turn');
+    if (document.fullscreenEnabled) add('⛶ Full screen <i>(F)</i>', () => this.toggleFullScreen());
     add(this.muteLabel(), (button) => {
       this.sounds.toggleMute();
       button.textContent = this.muteLabel();
@@ -117,12 +128,23 @@ export class Hud {
       this.sounds.toggleMusic();
       button.textContent = this.musicLabel();
     }, 'music-toggle');
-    add('⏭ Next tune (N)', () => this.nextTune());
+    add('⏭ Next tune <i>(N)</i>', () => this.nextTune());
 
     const hint = html('<div class="pill hint">Arrow keys, or click or tap where Sushi should go</div>');
     window.setTimeout(() => hint.classList.add('gone'), 9000);
 
-    this.root.append(topLeft, this.map, this.place, controls, hint, this.overlay, this.toastBox);
+    // On small screens the row of buttons folds away behind this one.
+    this.controls = controls;
+    this.menuButton.onclick = (event) => {
+      event.stopPropagation();
+      this.toggleMenu();
+    };
+    window.addEventListener('pointerdown', (event) => {
+      const target = event.target as Node;
+      if (!this.controls.contains(target) && !this.menuButton.contains(target)) this.closeMenu();
+    });
+
+    this.root.append(topLeft, this.map, this.place, this.menuButton, controls, hint, this.overlay, this.toastBox);
   }
 
   /** Shows where Sushi is indoors. The map and the turn buttons only make sense outside. */
@@ -146,6 +168,18 @@ export class Hud {
     return this.sounds.musicOff ? '🎵 Music off' : '🎵 Music on';
   }
 
+  private toggleMenu(): void {
+    const open = this.controls.classList.toggle('open');
+    this.menuButton.setAttribute('aria-expanded', String(open));
+    this.menuButton.textContent = open ? '✕' : '☰';
+  }
+
+  private closeMenu(): void {
+    this.controls.classList.remove('open');
+    this.menuButton.setAttribute('aria-expanded', 'false');
+    this.menuButton.textContent = '☰';
+  }
+
   private muteLabel(): string {
     return this.sounds.muted ? '🔇 Sound off' : '🔊 Sound on';
   }
@@ -163,6 +197,7 @@ export class Hud {
     else if (key === 'f' && document.fullscreenEnabled) this.toggleFullScreen();
     else if (key === 'i') this.toggleInbox();
     else if (key === 'k') this.toggleKnapsack();
+    else if (key === 'v') this.toggleFriends();
     else if (key === 'b' && !this.shopButton.hidden) this.toggleShop();
     else if (key === 'n') this.nextTune();
     else if (key === 'enter') this.overlay.querySelector<HTMLButtonElement>('.yes:not(:disabled)')?.click();
@@ -228,6 +263,7 @@ export class Hud {
     this.inboxOpen = false;
     this.knapsackOpen = false;
     this.shopOpen = false;
+    this.friendsOpen = false;
   }
 
   private showRinging(mission: Mission): void {
@@ -379,6 +415,48 @@ export class Hud {
     else if (deal === 'not-enough-coins') this.toast(`You need more coins for the ${name}.`);
     this.board.changed();
     if (this.shopOpen) this.renderShop();
+  }
+
+  private toggleFriends(): void {
+    if (this.board.call) return;
+    const wasOpen = this.friendsOpen;
+    this.clearOverlay();
+    if (wasOpen) return;
+    this.friendsOpen = true;
+    this.renderFriends();
+  }
+
+  private renderFriends(): void {
+    const scroll = this.overlay.querySelector('.goods')?.scrollTop ?? 0;
+    const { friendCoins, knapsacks } = this.board.progress;
+    const panel = html(
+      `<div class="panel inbox shop friends">
+        <header><h2>👥 Friends</h2><button class="close" aria-label="Close">✕</button></header>
+        <div class="goods"></div>
+      </div>`,
+    );
+    panel.querySelector<HTMLButtonElement>('.close')!.onclick = () => this.clearOverlay();
+    const goods = panel.querySelector('.goods')!;
+    this.life.villagers.forEach((villager, i) => {
+      const friend = FRIENDS[i];
+      const items = knapsacks[friend.id]
+        .map((k) => `<span title="${k.name}">${itemById(k.id)?.icon ?? ''}${k.count > 1 ? `×${k.count}` : ''}</span>`)
+        .join(' ');
+      goods.append(
+        html(
+          `<div class="ware">
+            <img class="keeper" src="${this.portraits[friend.id]}" alt="${friend.name}">
+            <span class="name">${friend.name}<small>${this.life.describe(villager)}</small><small class="owned">${items || 'Empty knapsack'}</small></span>
+            <span class="price">${COIN} ${friendCoins[friend.id]}</span>
+          </div>`,
+        ),
+      );
+    });
+    if (this.life.news.length > 0) {
+      goods.append(html(`<div class="news"><b>Village news</b>${this.life.news.map((line) => `<p>${line}</p>`).join('')}</div>`));
+    }
+    this.overlay.replaceChildren(panel);
+    goods.scrollTop = scroll;
   }
 
   private toggleKnapsack(): void {

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { FRAME_H, FRAME_W, POSES, WALK_FRAMES, type CharacterId } from '../art/characters';
 import {
   BAMBOO_CANVAS,
+  paintBubble,
   GROUND_SCALE,
   HOUSE_CANVAS,
   SPRITE_SCALE,
@@ -19,6 +20,7 @@ import {
 } from '../art/painters';
 import type { Sounds } from '../audio';
 import type { MissionBoard } from '../game/missions';
+import { PICK_RANGE, REGROW_SECONDS, Villager, type Plan, type VillageLife } from '../world/life';
 import type { Hud, MapMark } from '../ui/hud';
 import { Collision } from '../world/collision';
 import { depthAmong } from '../world/depth';
@@ -43,14 +45,17 @@ import {
   type Tree,
   type Village,
 } from '../world/layout';
-import { Walker, Wanderer, facing } from '../world/walker';
+import { Walker, facing } from '../world/walker';
 import { CHARACTER_FEET, CHARACTER_SCALE, SUSHI_SPEED, SUSHI_STEPS_PER_SECOND } from './characterSprites';
 import { PlayerDriver } from './player';
 
 const FRIEND_STEPS_PER_SECOND = 11;
 const VISIBLE_WORLD_WIDTH = 1100;
-const PICK_RANGE = 2.3;
-const REGROW_SECONDS = 30;
+const BUBBLES: Partial<Record<Plan['kind'], string>> = {
+  phone: '📞',
+  collect: '🎋',
+  'to-shop': '🛍',
+};
 const MAP_REFRESH_SECONDS = 0.2;
 const FADE_MS = 160;
 const TALLEST_WALL = 150;
@@ -67,6 +72,7 @@ interface Actor {
   image: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Image;
   tag?: Phaser.GameObjects.Image;
+  bubble?: Phaser.GameObjects.Image;
   stepsPerSecond: number;
   /** Keeps friends from all stepping in time. */
   stepOffset: number;
@@ -82,13 +88,13 @@ interface BambooClump {
   tree: Tree;
   image: Phaser.GameObjects.Image;
   marker: Phaser.GameObjects.Image;
-  readyIn: number;
 }
 
 export interface SceneDeps {
   village: Village;
   sheets: Record<CharacterId, HTMLCanvasElement>;
   board: MissionBoard;
+  life: VillageLife;
   hud: Hud;
   sounds: Sounds;
   dpr: () => number;
@@ -110,7 +116,6 @@ export class VillageScene extends Phaser.Scene {
   private rails: Rail[] = [];
   private actors: Actor[] = [];
   private sushi!: Actor;
-  private walkers: Walker[] = [];
   private driver!: PlayerDriver;
   /** The house Sushi is walking to after a tap on it. */
   private headingFor: House | null = null;
@@ -149,7 +154,7 @@ export class VillageScene extends Phaser.Scene {
       this.trees.push({ tree, image });
       if (bamboo) {
         const marker = this.add.image(0, 0, 'stick-marker').setScale(1 / 3).setDepth(OVERLAY_DEPTH).setVisible(false);
-        this.bamboo.push({ tree, image, marker, readyIn: 0 });
+        this.bamboo.push({ tree, image, marker });
       }
     }
 
@@ -160,15 +165,17 @@ export class VillageScene extends Phaser.Scene {
     ];
 
     this.sushi = this.addActor('sushi', new Walker(village.start[0], village.start[1], SUSHI_SPEED), SUSHI_STEPS_PER_SECOND);
+    for (const [kind, icon] of Object.entries(BUBBLES)) this.textures.addCanvas(`bubble-${kind}`, paintBubble(icon));
+    this.deps.life.setSushi(this.sushi.walker);
     village.residents.forEach((r, i) => {
-      const walker = new Wanderer(r.x, r.y, Math.random);
+      const walker = this.deps.life.villagers[i];
       const actor = this.addActor(r.friend.kind, walker, FRIEND_STEPS_PER_SECOND);
       actor.stepOffset = i * 7;
       const tagKey = `tag-${r.friend.id}`;
       this.textures.addCanvas(tagKey, paintNameTag(r.friend.name));
       actor.tag = this.add.image(0, 0, tagKey).setScale(1 / 3).setDepth(OVERLAY_DEPTH);
+      actor.bubble = this.add.image(0, 0, 'bubble-collect').setScale(1 / 3).setDepth(OVERLAY_DEPTH).setVisible(false);
     });
-    this.walkers = this.actors.map((a) => a.walker);
 
     const shop = village.houses.find((h) => h.isShop)!;
     this.textures.addCanvas('tag-shop', paintNameTag('Village Shop'));
@@ -181,6 +188,11 @@ export class VillageScene extends Phaser.Scene {
 
     this.deps.board.subscribe((event) => {
       if (event.type === 'completed') this.celebrate();
+    });
+    this.deps.life.subscribe((event) => {
+      if (event.type !== 'picked') return;
+      const clump = this.bamboo.find((c) => c.tree === event.tree);
+      if (clump) this.shake(clump.image);
     });
     this.game.events.emit('village-ready');
   }
@@ -213,11 +225,8 @@ export class VillageScene extends Phaser.Scene {
     if (this.indoors) return;
     const push = this.driver.update(this.rotation, seconds);
     this.useDoors(push);
-    for (const actor of this.actors) {
-      if (actor.walker instanceof Wanderer) actor.walker.update(this.collision, this.walkers, seconds);
-    }
     this.updateActors();
-    this.updateBamboo(seconds);
+    this.updateBamboo();
     this.mapClock -= seconds;
     if (this.mapClock <= 0) {
       this.mapClock = MAP_REFRESH_SECONDS;
@@ -322,7 +331,7 @@ export class VillageScene extends Phaser.Scene {
   }
 
   private setUpInput(): void {
-    this.driver = new PlayerDriver(this, this.sushi.walker, this.collision, () => this.walkers);
+    this.driver = new PlayerDriver(this, this.sushi.walker, this.collision, () => this.deps.life.present());
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
       if (this.indoors) return;
       const house = this.houseUnder(pointer.worldX, pointer.worldY);
@@ -359,6 +368,7 @@ export class VillageScene extends Phaser.Scene {
 
   private goInside(house: House): void {
     this.indoors = true;
+    this.deps.life.sushiAway = true;
     this.deps.sounds.door();
     this.deps.sounds.playMusic(house.isShop ? 'shop' : (house.owner?.id ?? 'sushi'));
     this.deps.hud.setIndoors(placeName(house), house.isShop);
@@ -379,6 +389,7 @@ export class VillageScene extends Phaser.Scene {
     walker.stopRoute();
     this.driver.reset();
     this.indoors = false;
+    this.deps.life.sushiAway = false;
     this.headingFor = null;
     this.deps.hud.setIndoors(null);
     this.deps.sounds.playMusic('village');
@@ -404,6 +415,7 @@ export class VillageScene extends Phaser.Scene {
       image.setDepth(this.actorDepth(walker));
       actor.shadow.setPosition(x, y + 3);
       actor.tag?.setPosition(x, y - 100);
+      if (walker instanceof Villager) this.showErrand(actor, walker, x, y);
     }
     this.layerRails();
   }
@@ -424,6 +436,16 @@ export class VillageScene extends Phaser.Scene {
     return depthAmong(vx, vy, STANDING_DEPTH + vx + vy, footprints);
   }
 
+  private showErrand(actor: Actor, villager: Villager, x: number, y: number): void {
+    const visible = !villager.hidden;
+    actor.image.setVisible(visible);
+    actor.shadow.setVisible(visible);
+    actor.tag?.setVisible(visible);
+    const showing = visible && villager.plan.kind in BUBBLES;
+    actor.bubble?.setVisible(showing);
+    if (showing) actor.bubble?.setTexture(`bubble-${villager.plan.kind}`).setPosition(x, y - 128);
+  }
+
   private layerRails(): void {
     const sushi = this.sushi.walker;
     const depth = this.sushi.image.depth;
@@ -433,31 +455,35 @@ export class VillageScene extends Phaser.Scene {
     }
   }
 
-  private updateBamboo(seconds: number): void {
-    const { board } = this.deps;
+  private updateBamboo(): void {
+    const { board, life } = this.deps;
     const hasMission = !!board.progress.active;
     const sushi = this.sushi.walker;
-    for (const clump of this.bamboo) {
-      clump.readyIn = Math.max(0, clump.readyIn - seconds);
-      const ready = hasMission && clump.readyIn === 0;
+    this.bamboo.forEach((clump, i) => {
+      const growing = life.grove.clumps[i];
+      const ready = hasMission && growing.readyIn === 0;
       clump.marker.setVisible(ready);
-      if (!ready) continue;
+      if (!ready) return;
       const cx = clump.tree.x + 0.5;
       const cy = clump.tree.y + 0.5;
       const [x, y] = project(this.rotation, cx, cy);
       clump.marker.setPosition(x, y - 214 + Math.sin(this.clock * 3 + clump.tree.x) * 5);
       if (Math.hypot(cx - sushi.x, cy - sushi.y) <= PICK_RANGE && board.progress.active) {
-        clump.readyIn = REGROW_SECONDS;
+        growing.readyIn = REGROW_SECONDS;
         this.pickFrom(clump);
         board.collectStick();
       }
-    }
+    });
+  }
+
+  private shake(image: Phaser.GameObjects.Image): void {
+    const scale = 1 / SPRITE_SCALE;
+    this.tweens.add({ targets: image, scaleX: scale * 1.05, scaleY: scale * 0.96, duration: 90, yoyo: true });
   }
 
   private pickFrom(clump: BambooClump): void {
     clump.marker.setVisible(false);
-    const scale = 1 / SPRITE_SCALE;
-    this.tweens.add({ targets: clump.image, scaleX: scale * 1.05, scaleY: scale * 0.96, duration: 90, yoyo: true });
+    this.shake(clump.image);
     const plus = this.add.image(clump.marker.x, clump.marker.y, 'plus-one').setScale(1 / 3).setDepth(OVERLAY_DEPTH);
     this.tweens.add({
       targets: plus,
@@ -486,7 +512,7 @@ export class VillageScene extends Phaser.Scene {
       marks.push({ x, y, colour: '#4fa56d', size: 4 });
     }
     for (const actor of this.actors) {
-      if (actor === this.sushi) continue;
+      if (actor === this.sushi || !actor.image.visible) continue;
       marks.push({ x: actor.image.x, y: actor.image.y, colour: '#8fa9f0', size: 4 });
     }
     marks.push({ x: this.sushi.image.x, y: this.sushi.image.y, colour: '#ff5c92', size: 6 });

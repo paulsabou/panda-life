@@ -68,6 +68,24 @@ describe('friends wandering', () => {
   });
 });
 
+describe('meeting someone on the path', () => {
+  it('lets two walkers coming straight at each other get past', () => {
+    const y = village.start[1];
+    const a = new Walker(12.5, y, 3);
+    const b = new Walker(16.5, y, 3);
+    const both = [a, b];
+    a.walkTo(collision, [16.5, y]);
+    b.walkTo(collision, [12.5, y]);
+    for (let frame = 0; frame < 300 && (a.walkingARoute || b.walkingARoute); frame++) {
+      a.followRoute(collision, both, 1 / 30);
+      b.followRoute(collision, both, 1 / 30);
+      expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(PERSONAL_SPACE * 0.9);
+    }
+    expect(a.walkingARoute).toBe(false);
+    expect(b.walkingARoute).toBe(false);
+  });
+});
+
 describe('Sushi bumping into a friend', () => {
   it('stops at the friend instead of walking through', () => {
     const friend = new Wanderer(village.residents[0].x, village.residents[0].y, seeded(3));

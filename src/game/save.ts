@@ -1,4 +1,4 @@
-import { emptyKnapsacks, restoreKnapsacks } from './knapsack';
+import { emptyKnapsacks, restoreKnapsacks, restorePurses, startingPurses } from './knapsack';
 import type { Progress } from './missions';
 
 const SAVE_KEY = 'panda-life-save-v1';
@@ -15,12 +15,13 @@ export function loadProgress(storage: Store): Progress {
         inbox: saved.inbox,
         active: saved.active ?? null,
         knapsacks: restoreKnapsacks(saved.knapsacks),
+        friendCoins: restorePurses(saved.friendCoins),
       };
     }
   } catch {
     // a damaged save just means starting again
   }
-  return { coins: 0, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks() };
+  return { coins: 0, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks(), friendCoins: startingPurses() };
 }
 
 export function saveProgress(progress: Progress, storage: Store): void {

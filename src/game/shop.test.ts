@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE, CATEGORIES, itemById } from './catalogue';
-import { KNAPSACK_SLOTS, emptyKnapsacks } from './knapsack';
+import { KNAPSACK_SLOTS, STARTING_FRIEND_COINS, emptyKnapsacks, startingPurses } from './knapsack';
 import type { Progress } from './missions';
 import { buy, sell, sellPrice } from './shop';
 
-const wallet = (coins: number): Progress => ({ coins, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks() });
+const wallet = (coins: number): Progress => ({
+  coins,
+  nextId: 1,
+  inbox: [],
+  active: null,
+  knapsacks: emptyKnapsacks(),
+  friendCoins: startingPurses(),
+});
 
 describe('the catalogue', () => {
   it('has exactly 100 objects', () => {
@@ -125,5 +132,10 @@ describe('selling', () => {
     expect(buy(p, 'maguro', 'can-of-tuna')).toBe('done');
     expect(p.knapsacks.maguro).toHaveLength(1);
     expect(p.knapsacks.sushi).toEqual([]);
+    expect(p.friendCoins.maguro).toBe(STARTING_FRIEND_COINS - 4);
+    expect(p.coins).toBe(10);
+    expect(sell(p, 'maguro', 'can-of-tuna')).toBe('done');
+    expect(p.friendCoins.maguro).toBe(STARTING_FRIEND_COINS - 2);
+    expect(p.coins).toBe(10);
   });
 });

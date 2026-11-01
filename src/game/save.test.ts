@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FRIENDS } from './friends';
-import { emptyKnapsacks } from './knapsack';
+import { STARTING_FRIEND_COINS, emptyKnapsacks, startingPurses } from './knapsack';
 import { loadProgress, saveProgress } from './save';
 
 function memoryStorage(initial?: string) {
@@ -15,7 +15,14 @@ function memoryStorage(initial?: string) {
 
 describe('saving progress', () => {
   it('starts fresh with nothing saved', () => {
-    expect(loadProgress(memoryStorage())).toEqual({ coins: 0, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks() });
+    expect(loadProgress(memoryStorage())).toEqual({
+      coins: 0,
+      nextId: 1,
+      inbox: [],
+      active: null,
+      knapsacks: emptyKnapsacks(),
+      friendCoins: startingPurses(),
+    });
   });
 
   it('brings back what was saved', () => {
@@ -26,6 +33,7 @@ describe('saving progress', () => {
       inbox: [{ id: 4, friend: 'inari' as const, sticks: 3, reward: 6 }],
       active: { mission: { id: 3, friend: 'ebi' as const, sticks: 5, reward: 10 }, collected: 2 },
       knapsacks: { ...emptyKnapsacks(), sushi: [{ id: 'bamboo', name: 'Bamboo stick', count: 2 }] },
+      friendCoins: { ...startingPurses(), inari: 31 },
     };
     saveProgress(progress, storage);
     expect(loadProgress(storage)).toEqual(progress);
@@ -42,6 +50,7 @@ describe('saving progress', () => {
     const progress = loadProgress(memoryStorage(old));
     expect(progress.coins).toBe(40);
     expect(progress.knapsacks).toEqual(emptyKnapsacks());
+    expect(progress.friendCoins.ebi).toBe(STARTING_FRIEND_COINS);
   });
 
   it('starts fresh if the save is damaged', () => {

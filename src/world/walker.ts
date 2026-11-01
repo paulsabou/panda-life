@@ -24,6 +24,9 @@ export function facing(r: Rotation, dx: number, dy: number): [Pose, boolean] {
 
 /** How close two characters can get before they count as bumping. */
 export const PERSONAL_SPACE = 1.05;
+const LOOK_AHEAD = 2;
+const AHEAD_COSINE = 0.5;
+const BEAR_RIGHT = 1.2;
 
 export class Walker {
   /** Last direction walked, in world terms, so the picture can follow map turns. */
@@ -35,7 +38,7 @@ export class Walker {
   constructor(
     public x: number,
     public y: number,
-    private speed: number,
+    public speed: number,
   ) {}
 
   get walkingARoute(): boolean {
@@ -79,7 +82,22 @@ export class Walker {
       this.route.shift();
       return true;
     }
-    return this.step(ground, others, wx, wy, Math.min(seconds, left / this.speed));
+    const [dx, dy] = this.keepRight(others, wx / left, wy / left);
+    return this.step(ground, others, dx, dy, Math.min(seconds, left / this.speed));
+  }
+
+  /** Like people on a path: seeing someone just ahead, bear right so you both get past. */
+  private keepRight(others: Walker[], ux: number, uy: number): Pair {
+    for (const o of others) {
+      if (o === this) continue;
+      const dx = o.x - this.x;
+      const dy = o.y - this.y;
+      const near = Math.hypot(dx, dy);
+      if (near > 0 && near < LOOK_AHEAD && (dx * ux + dy * uy) / near > AHEAD_COSINE) {
+        return [ux + uy * BEAR_RIGHT, uy - ux * BEAR_RIGHT];
+      }
+    }
+    return [ux, uy];
   }
 
   private canStand(ground: Ground, others: Walker[], x: number, y: number): boolean {
@@ -94,17 +112,17 @@ export class Walker {
 }
 
 const WANDER_RANGE = 7;
-const STROLL_SPEED = 2.4;
+export const STROLL_SPEED = 2.4;
 
 /** A friend pottering around near home. */
 export class Wanderer extends Walker {
-  private pause: number;
+  protected pause: number;
   private stuckFor = 0;
 
   constructor(
     public homeX: number,
     public homeY: number,
-    private rng: () => number,
+    protected rng: () => number,
   ) {
     super(homeX, homeY, STROLL_SPEED);
     this.pause = 1 + rng() * 4;

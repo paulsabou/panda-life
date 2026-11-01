@@ -556,6 +556,21 @@ export function paintStickMarker(): HTMLCanvasElement {
   return canvas;
 }
 
+/** A little speech bubble showing what a friend is busy with. */
+export function paintBubble(icon: string): HTMLCanvasElement {
+  const [canvas, c] = newCanvas(40, 42, 3);
+  c.fillStyle = 'rgba(255,255,255,.96)';
+  c.beginPath();
+  c.arc(20, 18, 17, 0, Math.PI * 2);
+  c.fill();
+  poly(c, [[15, 32], [25, 32], [20, 41]], 'rgba(255,255,255,.96)');
+  c.font = '19px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(icon, 20, 19);
+  return canvas;
+}
+
 export function paintPlusOne(): HTMLCanvasElement {
   const [canvas, c] = newCanvas(60, 34, 3);
   c.font = '800 26px -apple-system, BlinkMacSystemFont, sans-serif';

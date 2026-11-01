@@ -1,5 +1,5 @@
 import { FRIENDS, type FriendId } from './friends';
-import type { Knapsacks } from './knapsack';
+import type { Knapsacks, Purses } from './knapsack';
 
 export const FIRST_CALL_SECONDS = 4;
 export const RING_SECONDS = 15;
@@ -27,6 +27,7 @@ export interface Progress {
   inbox: Mission[];
   active: ActiveMission | null;
   knapsacks: Knapsacks;
+  friendCoins: Purses;
 }
 
 export interface Call {

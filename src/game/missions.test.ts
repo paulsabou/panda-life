@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyKnapsacks } from './knapsack';
+import { emptyKnapsacks, startingPurses } from './knapsack';
 import {
   FIRST_CALL_SECONDS,
   MAX_INBOX,
@@ -9,7 +9,14 @@ import {
   type Progress,
 } from './missions';
 
-const fresh = (): Progress => ({ coins: 0, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks() });
+const fresh = (): Progress => ({
+  coins: 0,
+  nextId: 1,
+  inbox: [],
+  active: null,
+  knapsacks: emptyKnapsacks(),
+  friendCoins: startingPurses(),
+});
 
 function ringing(progress = fresh()) {
   const events: MissionEvent[] = [];

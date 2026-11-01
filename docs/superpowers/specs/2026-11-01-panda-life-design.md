@@ -22,6 +22,8 @@ There is no timer on a mission, no losing and no penalty. Success looks like a k
 - A button changes the music.
 - Every character, Sushi included, carries a knapsack on their back that can hold an inventory of items. All are empty for now, and the knapsack is drawn so it doesn't get in the way.
 - A special building, the village shop, where coins buy and sell the objects in a knapsack. It stocks 100 everyday objects from a Japanese home, mostly casual things like books, cooking tools and food, each priced in whole coins.
+- Friends run on simple rules: they give each other bamboo missions, fulfil them for coins, and spend the coins at the shop.
+- On mobile the bottom buttons collapse into a hamburger menu. Desktop always keeps them, however small the window.
 - Friends call Sushi. An answered call explains the mission, which Sushi can accept.
 - A call that is ignored or refused goes to an inbox, where it can be accepted or refused later.
 - Only one mission at a time.
@@ -59,13 +61,18 @@ Spending coins and other things to collect are later work. The code should not g
 - The knapsack holds 12 different objects, and the same object stacks in one slot.
 - For now only Sushi trades, as friends have no coins of their own, though the rules work for any character's knapsack.
 - Friends hold their calls while the shop, inbox or knapsack screen is open, so a call never interrupts a purchase.
+- Each friend has their own coins, starting at 10. A free friend who has saved 12 coins goes to the shop; otherwise they may phone another free friend with a job of 3 to 6 sticks at 2 coins a stick.
+- A friend's job pays the way Sushi's missions do, as a reward from the game and not from the asker's coins, so the village can't run out of money.
+- At the shop a friend buys one thing they can afford, usually to their taste, and sells their cheapest object first if the knapsack is full.
+- Friends pick from the same bamboo trees as Sushi. Going into the shop hides them for a few seconds; they don't appear inside it yet.
+- Bubbles show what a friend is busy with, and the Friends screen (V) shows everyone's coins, knapsack and the village news. Friends carry on while Sushi is indoors.
 - Copy is English. Sounds are generated in the browser. Sound effects and music each have their own on/off button.
 - The on-screen layer (calls, inbox, coins, buttons) is HTML over the Phaser canvas, so text is sharp and big buttons work with touch.
 
 ## Shape of the code
 
 - `src/game`: mission rules and saving, with no Phaser in them.
-- `src/world`: projection, village layout, collision and route finding, with no Phaser in them.
+- `src/world`: projection, village layout, collision, route finding and what the friends get up to, with no Phaser in them.
 - `src/art`: all drawing, as canvases and SVG.
 - `src/scene`: the Phaser scene, which puts the above on screen.
 - `src/ui`: the HTML layer.
