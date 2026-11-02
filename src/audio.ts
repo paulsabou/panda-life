@@ -8,7 +8,6 @@ const MUSIC_ON_KEY = 'panda-life-music-on';
 export class Sounds {
   muted = localStorage.getItem(MUTE_KEY) === '1';
   private context: AudioContext | null = null;
-  private ringTimer: number | null = null;
   private music: MusicPlayer | null = null;
   private theme: ThemeId = 'village';
   /** Music stays off until the player asks for it. */
@@ -48,15 +47,8 @@ export class Sounds {
     return this.muted;
   }
 
-  startRinging(): void {
-    this.stopRinging();
-    this.ringOnce();
-    this.ringTimer = window.setInterval(() => this.ringOnce(), 1600);
-  }
-
-  stopRinging(): void {
-    if (this.ringTimer !== null) window.clearInterval(this.ringTimer);
-    this.ringTimer = null;
+  ring(): void {
+    [659, 880, 659, 880].forEach((pitch, i) => this.tone(pitch, i * 0.12, 0.11));
   }
 
   pick(): void {
@@ -75,10 +67,6 @@ export class Sounds {
 
   coins(): void {
     [988, 1319, 1568, 1976].forEach((pitch, i) => this.tone(pitch, i * 0.09, 0.2));
-  }
-
-  private ringOnce(): void {
-    [659, 880, 659, 880].forEach((pitch, i) => this.tone(pitch, i * 0.12, 0.11));
   }
 
   private tone(pitch: number, delay: number, length: number, volume = 0.09): void {

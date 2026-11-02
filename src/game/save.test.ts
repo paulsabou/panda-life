@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { FRIENDS } from './friends';
 import { STARTING_FRIEND_COINS, emptyKnapsacks, startingPurses } from './knapsack';
-import { loadProgress, saveProgress } from './save';
+import { hasSavedGame, loadAnimal, loadProgress, saveProgress, startNewGame } from './save';
 
 function memoryStorage(initial?: string) {
-  let value = initial ?? null;
+  const values = new Map<string, string>();
+  if (initial !== undefined) values.set('panda-life-save-v1', initial);
   return {
-    getItem: () => value,
-    setItem: (_key: string, next: string) => {
-      value = next;
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, next: string) => {
+      values.set(key, next);
     },
   };
 }
@@ -56,5 +57,33 @@ describe('saving progress', () => {
   it('starts fresh if the save is damaged', () => {
     expect(loadProgress(memoryStorage('not json')).coins).toBe(0);
     expect(loadProgress(memoryStorage('{"coins":"lots"}')).coins).toBe(0);
+  });
+});
+
+describe('new and saved games', () => {
+  it('knows when there is a game to continue', () => {
+    expect(hasSavedGame(memoryStorage())).toBe(false);
+    const storage = memoryStorage();
+    saveProgress(loadProgress(storage), storage);
+    expect(hasSavedGame(storage)).toBe(true);
+  });
+
+  it('plays the panda in games saved before animals could be chosen', () => {
+    expect(loadAnimal(memoryStorage())).toBe('sushi');
+  });
+
+  it('starts a new game from nothing, as the chosen animal', () => {
+    const storage = memoryStorage();
+    saveProgress({ ...loadProgress(storage), coins: 99 }, storage);
+    const progress = startNewGame(storage, 'fox');
+    expect(progress.coins).toBe(0);
+    expect(loadProgress(storage).coins).toBe(0);
+    expect(loadAnimal(storage)).toBe('fox');
+  });
+
+  it('ignores an animal it does not know', () => {
+    const storage = memoryStorage();
+    storage.setItem('panda-life-animal-v1', 'dragon');
+    expect(loadAnimal(storage)).toBe('sushi');
   });
 });

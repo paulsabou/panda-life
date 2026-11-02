@@ -2,7 +2,7 @@
 
 Game published for annasabou.com.
 
-A gentle isometric browser game. You play Sushi the panda, answering calls from friends, collecting bamboo for coins and spending them at the village shop.
+A gentle isometric browser game. You play Sushi, a panda or whichever animal you choose, answering calls from friends, collecting bamboo for coins and spending them at the village shop.
 
 ## Running it
 

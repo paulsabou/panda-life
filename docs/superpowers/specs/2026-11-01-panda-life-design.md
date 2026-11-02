@@ -39,8 +39,8 @@ Spending coins and other things to collect are later work. The code should not g
 
 ## Builder's calls
 
-- A call has two steps: Answer or Decline while ringing, then Accept or Not now once the friend has explained.
-- A call rings for 15 seconds, then counts as ignored.
+- A call rings once, for 3 seconds, as a small button with the friend's face on the top bar. Tapping it (or Enter) answers; otherwise it goes to the inbox with a short notification.
+- An answered call shows the friend's ask, with Accept or Not now.
 - Refusing from the inbox removes the mission for good.
 - A friend calling while Sushi is busy goes straight to the inbox, with a small notification.
 - The inbox holds 6 missions. Friends stop calling while it is full, so it can't pile up.
@@ -62,7 +62,10 @@ Spending coins and other things to collect are later work. The code should not g
 - The shop pays half what it charges, rounded down, and at least 1 coin, so buying and selling can't make coins.
 - The knapsack holds 12 different objects, and the same object stacks in one slot.
 - For now only Sushi trades, as friends have no coins of their own, though the rules work for any character's knapsack.
-- Friends hold their calls while the shop, inbox or knapsack screen is open, so a call never interrupts a purchase.
+- Friends hold their calls while the shop, inbox or knapsack screen is open, so a call never interrupts a purchase. A call already ringing still moves on to the inbox, and screens can be opened while it rings.
+- The game opens on a start screen: Continue or New game, or straight to choosing an animal if nothing is saved. A new game replaces the saved one, and there's a Back button.
+- A new game starts by choosing Sushi's animal from all 8: panda, tanuki, cat, fox, beaver, rabbit, deer or dog. Sushi keeps the name. Whoever was that animal (a friend, or Wasabi for the tanuki) becomes the panda instead, keeping their name and house, so nobody has a twin.
+- A new game opens with a short how-to-play tutorial; continuing doesn't. Skip or Esc closes it, and no call rings until it is closed.
 - Each friend has their own coins, starting at 10. A free friend who has saved 12 coins goes to the shop; otherwise they may phone another free friend with a job of 3 to 6 sticks at 2 coins a stick.
 - A friend's job pays the way Sushi's missions do, as a reward from the game and not from the asker's coins, so the village can't run out of money.
 - At the shop a friend buys one thing they can afford, usually to their taste, and sells their cheapest object first if the knapsack is full.

@@ -6,6 +6,7 @@ import type { Mission, MissionBoard, MissionEvent } from '../game/missions';
 import { buy, sell, sellPrice, type Deal } from '../game/shop';
 import { FRIENDS } from '../game/friends';
 import type { VillageLife } from '../world/life';
+import { tutorialSteps, type TutorialPicture } from './tutorial';
 
 const COIN = '<span class="coin"></span>';
 const BAMBOO = '🎋';
@@ -13,12 +14,13 @@ const TOAST_MS = 3200;
 const PARTY_MS = 3400;
 const SELL_TAB = 'Sell';
 const FRIENDS_REFRESH_MS = 1000;
+const HINT_MS = 9000;
 
 export interface HudActions {
   turn(step: number): void;
 }
 
-function html<T extends HTMLElement = HTMLElement>(markup: string): T {
+export function html<T extends HTMLElement = HTMLElement>(markup: string): T {
   const holder = document.createElement('div');
   holder.innerHTML = markup.trim();
   return holder.firstElementChild as T;
@@ -40,6 +42,10 @@ export class Hud {
   private shopButton = html<HTMLButtonElement>('<button class="pill" aria-label="Shop" hidden>🛍<span class="word">Shop</span></button>');
   private partyTimer = 0;
   private place = html('<div class="pill place" hidden></div>');
+  private ringer = html<HTMLButtonElement>('<button class="pill ringer" hidden></button>');
+  private hint = html('<div class="pill hint">Arrow keys, or click or tap where Sushi should go</div>');
+  private hintTimer = 0;
+  private tutorial: { next(): void; skip(): void } | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -59,7 +65,68 @@ export class Hud {
 
   /** True while the player is busy in a screen, when a call shouldn't interrupt. */
   get panelOpen(): boolean {
-    return this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen;
+    return this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen || this.tutorial !== null;
+  }
+
+  /** A few cards on how to play. Calls wait until it is finished or skipped. */
+  showTutorial(sushi: string, animal: string): void {
+    const steps = tutorialSteps(window.matchMedia('(pointer: coarse)').matches, animal);
+    const backdrop = html(
+      `<div class="tutorial-backdrop">
+        <div class="panel call tutorial" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+          <div class="picture"></div>
+          <h2 id="tutorial-title"></h2>
+          <p class="text"></p>
+          <div class="dots">${steps.map(() => '<i></i>').join('')}</div>
+          <div class="actions"><button class="no">Skip</button><button class="yes"></button></div>
+        </div>
+      </div>`,
+    );
+    const pictureOf = (picture: TutorialPicture): string => {
+      if (typeof picture === 'object') return `<span class="face emoji">${picture.emoji}</span>`;
+      const src = picture === 'sushi' ? sushi : picture === 'shopkeeper' ? this.shopkeeper : this.portraits[FRIENDS[0].id];
+      return `<img class="face" src="${src}" alt="">`;
+    };
+    const skip = backdrop.querySelector<HTMLButtonElement>('.no')!;
+    const next = backdrop.querySelector<HTMLButtonElement>('.yes')!;
+    let at = 0;
+    const show = () => {
+      const step = steps[at];
+      const last = at === steps.length - 1;
+      backdrop.querySelector('.picture')!.innerHTML = pictureOf(step.picture);
+      backdrop.querySelector('h2')!.textContent = step.title;
+      backdrop.querySelector('.text')!.innerHTML = step.text;
+      backdrop.querySelectorAll('.dots i').forEach((dot, i) => dot.classList.toggle('on', i === at));
+      skip.hidden = last;
+      next.textContent = last ? "Let's play!" : 'Next';
+    };
+    const close = () => {
+      backdrop.remove();
+      this.tutorial = null;
+      this.showHint();
+    };
+    const tutorial = {
+      next: () => {
+        if (at === steps.length - 1) close();
+        else {
+          at += 1;
+          show();
+        }
+      },
+      skip: close,
+    };
+    next.onclick = tutorial.next;
+    skip.onclick = tutorial.skip;
+    show();
+    this.tutorial = tutorial;
+    this.root.append(backdrop);
+  }
+
+  /** The reminder about moving shows for a while after the game gets going. */
+  private showHint(): void {
+    window.clearTimeout(this.hintTimer);
+    this.hint.classList.remove('gone');
+    this.hintTimer = window.setTimeout(() => this.hint.classList.add('gone'), HINT_MS);
   }
 
   private build(): void {
@@ -72,7 +139,8 @@ export class Hud {
     this.shopButton.onclick = () => this.toggleShop();
     const friendsButton = html<HTMLButtonElement>('<button class="pill" aria-label="Friends">👥<span class="word">Friends</span></button>');
     friendsButton.onclick = () => this.toggleFriends();
-    topBar.append(this.coins, inboxButton, knapsackButton, friendsButton, this.shopButton, this.place);
+    this.ringer.onclick = () => this.board.answer();
+    topBar.append(this.coins, inboxButton, knapsackButton, friendsButton, this.shopButton, this.ringer, this.place);
 
     const controls = html('<div class="controls"></div>');
     const add = (label: string, run: (button: HTMLButtonElement) => void, extra = '') => {
@@ -97,8 +165,7 @@ export class Hud {
     }, 'music-toggle');
     add('⏭ Next tune <i>(N)</i>', () => this.nextTune());
 
-    const hint = html('<div class="pill hint">Arrow keys, or click or tap where Sushi should go</div>');
-    window.setTimeout(() => hint.classList.add('gone'), 9000);
+    this.showHint();
 
     // On small screens the row of buttons folds away behind this one.
     this.controls = controls;
@@ -111,7 +178,7 @@ export class Hud {
       if (!this.controls.contains(target) && !this.menuButton.contains(target)) this.closeMenu();
     });
 
-    this.root.append(topBar, this.quest, this.menuButton, controls, hint, this.overlay, this.toastBox);
+    this.root.append(topBar, this.quest, this.menuButton, controls, this.hint, this.overlay, this.toastBox);
   }
 
   /** Shows where Sushi is indoors. The map and the turn buttons only make sense outside. */
@@ -159,6 +226,13 @@ export class Hud {
   private onKey(e: KeyboardEvent): void {
     if (e.repeat) return;
     const key = e.key.toLowerCase();
+    if (this.tutorial) {
+      // Stop a focused button also taking the key, which would skip a card.
+      if (key === 'enter' || key === 'escape') e.preventDefault();
+      if (key === 'enter') this.tutorial.next();
+      else if (key === 'escape') this.tutorial.skip();
+      return;
+    }
     if (key === 'q') this.actions.turn(-1);
     else if (key === 'e') this.actions.turn(1);
     else if (key === 'f' && document.fullscreenEnabled) this.toggleFullScreen();
@@ -167,6 +241,7 @@ export class Hud {
     else if (key === 'v') this.toggleFriends();
     else if (key === 'b' && !this.shopButton.hidden) this.toggleShop();
     else if (key === 'n') this.nextTune();
+    else if (key === 'enter' && this.board.call?.stage === 'ringing') this.board.answer();
     else if (key === 'enter') this.overlay.querySelector<HTMLButtonElement>('.yes:not(:disabled)')?.click();
     else if (key === 'escape') this.overlay.querySelector<HTMLButtonElement>('.no, .close')?.click();
   }
@@ -174,19 +249,20 @@ export class Hud {
   private onMission(event: MissionEvent): void {
     switch (event.type) {
       case 'ringing':
-        this.sounds.startRinging();
+        this.sounds.ring();
         this.showRinging(event.mission);
         break;
       case 'talking':
-        this.sounds.stopRinging();
+        this.ringer.hidden = true;
         this.showTalking(event.mission);
         break;
       case 'call-over':
-        this.sounds.stopRinging();
-        this.clearOverlay();
+        this.ringer.hidden = true;
+        // Only the call card goes; a screen opened while it rang stays open.
+        if (this.overlay.querySelector('.call')) this.clearOverlay();
         break;
       case 'inboxed':
-        this.toastMission(event.mission, event.why === 'busy' ? 'called. Their message is in your inbox.' : 'is saved in your inbox.');
+        this.toastMission(event.mission, event.why === 'declined' ? 'is saved in your inbox.' : 'called. Their message is in your inbox.');
         break;
       case 'accepted':
         this.toast(`Find the bamboo trees with a ${BAMBOO} marker!`);
@@ -234,20 +310,12 @@ export class Hud {
     this.friendsOpen = false;
   }
 
+  /** A call rings once on the top bar. Tapping it answers; otherwise it moves on to the inbox. */
   private showRinging(mission: Mission): void {
     const friend = friendById(mission.friend);
-    this.clearOverlay();
-    const card = html(
-      `<div class="panel call ringing">
-        <img class="face" src="${this.portraits[mission.friend]}" alt="${friend.name}">
-        <h2>${friend.name}</h2>
-        <p>is calling you! 📞</p>
-        <div class="actions"><button class="yes">Answer</button><button class="no">Decline</button></div>
-      </div>`,
-    );
-    card.querySelector<HTMLButtonElement>('.yes')!.onclick = () => this.board.answer();
-    card.querySelector<HTMLButtonElement>('.no')!.onclick = () => this.board.decline();
-    this.overlay.append(card);
+    this.ringer.innerHTML = `<img src="${this.portraits[mission.friend]}" alt="">📞<span class="word">${friend.name} is calling</span>`;
+    this.ringer.setAttribute('aria-label', `${friend.name} is calling. Answer`);
+    this.ringer.hidden = false;
   }
 
   private showTalking(mission: Mission): void {
@@ -284,7 +352,7 @@ export class Hud {
   }
 
   private toggleInbox(): void {
-    if (this.board.call) return;
+    if (this.board.call?.stage === 'talking') return;
     if (this.inboxOpen) this.clearOverlay();
     else {
       this.clearOverlay();
@@ -294,7 +362,7 @@ export class Hud {
   }
 
   openShop(): void {
-    if (this.board.call) return;
+    if (this.board.call?.stage === 'talking') return;
     this.clearOverlay();
     this.shopOpen = true;
     this.renderShop();
@@ -386,7 +454,7 @@ export class Hud {
   }
 
   private toggleFriends(): void {
-    if (this.board.call) return;
+    if (this.board.call?.stage === 'talking') return;
     const wasOpen = this.friendsOpen;
     this.clearOverlay();
     if (wasOpen) return;
@@ -428,7 +496,7 @@ export class Hud {
   }
 
   private toggleKnapsack(): void {
-    if (this.board.call) return;
+    if (this.board.call?.stage === 'talking') return;
     const wasOpen = this.knapsackOpen;
     this.clearOverlay();
     if (wasOpen) return;

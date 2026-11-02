@@ -74,6 +74,15 @@ describe('calls', () => {
     expect(events).toContainEqual(expect.objectContaining({ type: 'inboxed', why: 'ignored' }));
   });
 
+  it('rings only briefly, about one ring, before going to the inbox', () => {
+    const { board } = ringing();
+    board.tick(2.9);
+    expect(board.call?.stage).toBe('ringing');
+    board.tick(0.2);
+    expect(board.call).toBeNull();
+    expect(board.progress.inbox).toHaveLength(1);
+  });
+
   it('keeps talking for as long as the player needs to read', () => {
     const { board } = ringing();
     board.answer();

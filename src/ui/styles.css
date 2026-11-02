@@ -270,9 +270,6 @@ button {
   animation: pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
 
-.call.ringing {
-  animation: pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1), wobble 1.6s ease-in-out 0.3s infinite;
-}
 
 .call .face {
   width: 118px;
@@ -620,24 +617,45 @@ button {
   }
 }
 
-@keyframes wobble {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) rotate(0);
-  }
-  20% {
-    transform: translate(-50%, -50%) rotate(-2.2deg);
-  }
-  40% {
-    transform: translate(-50%, -50%) rotate(2.2deg);
-  }
-  60% {
-    transform: translate(-50%, -50%) rotate(-1.4deg);
-  }
-  80% {
-    transform: translate(-50%, -50%) rotate(1.4deg);
+/* A friend ringing, for a moment, on the top line. */
+.top-bar .ringer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: var(--pink-soft);
+  box-shadow: var(--shadow), inset 0 0 0 2px var(--pink);
+  animation: ring-in 0.25s ease, jiggle 0.5s ease-in-out 0.25s 3;
+}
+
+.top-bar .ringer[hidden] {
+  display: none;
+}
+
+.ringer img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+@keyframes ring-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
   }
 }
+
+@keyframes jiggle {
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
 
 /* Too narrow for words on the top line: just the pictures, slightly smaller. */
 @media (max-width: 720px), (pointer: coarse) and (max-height: 500px) {
@@ -764,5 +782,138 @@ button {
     right: 76px;
     bottom: 16px;
     max-height: none;
+  }
+}
+
+/* The how-to-play cards shown at the start. The backdrop keeps taps off the village. */
+.tutorial-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(90, 74, 106, 0.25);
+  pointer-events: auto;
+}
+
+.tutorial .picture {
+  display: grid;
+  place-items: center;
+}
+
+.tutorial .emoji {
+  display: grid;
+  place-items: center;
+  font-size: 64px;
+  line-height: 1;
+}
+
+.tutorial .text {
+  min-height: 3.6em;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  transition: background 0.2s;
+}
+
+.dots i.on {
+  background: var(--pink);
+}
+
+.tutorial [hidden] {
+  display: none;
+}
+
+/* The first screen: continue or start again, then choose an animal. */
+.start-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  touch-action: pan-y;
+  background: linear-gradient(#e3f7fb, #d8f2e4);
+  pointer-events: auto;
+}
+
+.start-card {
+  width: min(520px, 100%);
+  box-sizing: border-box;
+  padding: 24px 22px;
+  text-align: center;
+  animation: start-pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.start-card h1 {
+  margin: 8px 0 4px;
+  font-size: 30px;
+}
+
+.start-card .face {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: var(--pink-soft);
+}
+
+.start-card .note {
+  margin: 4px 0 14px;
+}
+
+.animal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.animal {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border-radius: 18px;
+  background: #fff5f8;
+  box-shadow: inset 0 0 0 2px var(--pink-soft);
+  font-weight: 800;
+  font-size: 15px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.animal img {
+  width: 84%;
+  max-width: 96px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pink-soft);
+}
+
+.animal:hover,
+.animal:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: inset 0 0 0 3px var(--pink);
+  outline: none;
+}
+
+@media (max-width: 420px) {
+  .animal-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@keyframes start-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
   }
 }

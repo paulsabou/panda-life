@@ -2,7 +2,8 @@ import { FRIENDS, type FriendId } from './friends';
 import type { Knapsacks, Purses } from './knapsack';
 
 export const FIRST_CALL_SECONDS = 4;
-export const RING_SECONDS = 15;
+/** One ring, shown on the top bar, then the call waits in the inbox. */
+export const RING_SECONDS = 3;
 export const MAX_INBOX = 6;
 const COINS_PER_STICK = 2;
 const MIN_STICKS = 3;

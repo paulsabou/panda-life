@@ -3,6 +3,8 @@ import type { Pose } from '../world/walker';
 
 export type CharacterId = 'sushi' | 'tanuki' | AnimalKind;
 
+export const CHARACTER_IDS: readonly CharacterId[] = ['sushi', 'tanuki', 'cat', 'fox', 'beaver', 'rabbit', 'deer', 'dog'];
+
 export const POSES: readonly Pose[] = ['front', 'frontSide', 'side', 'backSide', 'back'];
 export const WALK_FRAMES = 6;
 export const FRAME_W = 200;
