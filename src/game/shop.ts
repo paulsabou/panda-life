@@ -1,5 +1,5 @@
 import { itemById, type ShopItem } from './catalogue';
-import { KNAPSACK_SLOTS, type KnapsackOwner } from './knapsack';
+import { hasRoomFor, putIn, takeOut, type KnapsackOwner } from './knapsack';
 import type { Progress } from './missions';
 
 export type Deal = 'done' | 'not-enough-coins' | 'knapsack-full' | 'not-available';
@@ -22,22 +22,15 @@ export function buy(progress: Progress, owner: KnapsackOwner, id: string): Deal 
   const item = itemById(id);
   if (!item) return 'not-available';
   if (coinsOf(progress, owner) < item.price) return 'not-enough-coins';
-  const knapsack = progress.knapsacks[owner];
-  const held = knapsack.find((k) => k.id === id);
-  if (!held && knapsack.length >= KNAPSACK_SLOTS) return 'knapsack-full';
+  if (!hasRoomFor(progress.knapsacks, owner, id)) return 'knapsack-full';
   addCoins(progress, owner, -item.price);
-  if (held) held.count += 1;
-  else knapsack.push({ id, name: item.name, count: 1 });
+  putIn(progress.knapsacks, owner, id, item.name);
   return 'done';
 }
 
 export function sell(progress: Progress, owner: KnapsackOwner, id: string): Deal {
   const item = itemById(id);
-  const knapsack = progress.knapsacks[owner];
-  const held = knapsack.find((k) => k.id === id);
-  if (!item || !held) return 'not-available';
+  if (!item || !takeOut(progress.knapsacks, owner, id)) return 'not-available';
   addCoins(progress, owner, sellPrice(item));
-  held.count -= 1;
-  if (held.count === 0) progress.knapsacks[owner] = knapsack.filter((k) => k !== held);
   return 'done';
 }

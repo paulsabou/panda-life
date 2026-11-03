@@ -16,6 +16,8 @@ const fresh = (): Progress => ({
   active: null,
   knapsacks: emptyKnapsacks(),
   friendCoins: startingPurses(),
+  friendship: {},
+  discovered: [],
 });
 
 function ringing(progress = fresh()) {

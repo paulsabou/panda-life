@@ -55,7 +55,13 @@ const BUBBLES: Partial<Record<Plan['kind'], string>> = {
   phone: '📞',
   collect: '🎋',
   'to-shop': '🛍',
+  'to-give': '🎁',
+  giving: '💕',
 };
+/** How close Sushi must be to a friend to hand over a present. */
+const GIFT_REACH = 2.2;
+/** How long Sushi keeps following a friend who was tapped, in case they walk off. */
+const FOLLOW_SECONDS = 8;
 const FADE_MS = 160;
 const TALLEST_WALL = 150;
 
@@ -118,6 +124,8 @@ export class VillageScene extends Phaser.Scene {
   private driver!: PlayerDriver;
   /** The house Sushi is walking to after a tap on it. */
   private headingFor: House | null = null;
+  /** The friend Sushi is walking up to after a tap on them, to give a present. */
+  private visiting: { villager: Villager; left: number } | null = null;
   private indoors = false;
   private shop!: House;
   private shopTag!: Phaser.GameObjects.Image;
@@ -223,6 +231,7 @@ export class VillageScene extends Phaser.Scene {
     if (this.indoors) return;
     const push = this.driver.update(this.rotation, seconds);
     this.useDoors(push);
+    this.visit(push, seconds);
     this.updateActors();
     this.updateBamboo();
   }
@@ -326,6 +335,14 @@ export class VillageScene extends Phaser.Scene {
     this.driver = new PlayerDriver(this, this.sushi.walker, this.collision, () => this.deps.life.present());
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
       if (this.indoors) return;
+      const villager = this.villagerUnder(pointer.worldX, pointer.worldY);
+      this.visiting = villager ? { villager, left: FOLLOW_SECONDS } : null;
+      if (villager) {
+        this.headingFor = null;
+        this.driver.walkTo([villager.x, villager.y]);
+        this.showTap(pointer.worldX, pointer.worldY);
+        return;
+      }
       const house = this.houseUnder(pointer.worldX, pointer.worldY);
       this.headingFor = house;
       if (house) this.driver.walkTo(doorSpot(house));
@@ -333,6 +350,36 @@ export class VillageScene extends Phaser.Scene {
       this.showTap(pointer.worldX, pointer.worldY);
     });
     this.events.on(Phaser.Scenes.Events.WAKE, (_system: unknown, data: { from: House }) => this.comeOutOf(data.from));
+  }
+
+  /** A friend standing where the tap landed, nearest the front if they overlap. */
+  private villagerUnder(sx: number, sy: number): Villager | null {
+    let best: { villager: Villager; depth: number } | null = null;
+    for (const actor of this.actors) {
+      const { walker, image } = actor;
+      if (!(walker instanceof Villager) || walker.hidden || !image.getBounds().contains(sx, sy)) continue;
+      if (!best || image.depth > best.depth) best = { villager: walker, depth: image.depth };
+    }
+    return best?.villager ?? null;
+  }
+
+  /** Walk up to the friend who was tapped, following if they move, then offer a present. */
+  private visit(push: [number, number], seconds: number): void {
+    if (!this.visiting) return;
+    const { villager } = this.visiting;
+    const sushi = this.sushi.walker;
+    this.visiting.left -= seconds;
+    if (push[0] || push[1] || villager.hidden || this.visiting.left <= 0) {
+      this.visiting = null;
+      return;
+    }
+    if (Math.hypot(villager.x - sushi.x, villager.y - sushi.y) <= GIFT_REACH) {
+      this.visiting = null;
+      sushi.stopRoute();
+      this.deps.hud.openGift(villager.id);
+      return;
+    }
+    if (!sushi.walkingARoute) this.driver.walkTo([villager.x, villager.y]);
   }
 
   /** Walls stand up from the ground, so a tap on one lands on the ground in front of it. */
@@ -383,6 +430,7 @@ export class VillageScene extends Phaser.Scene {
     this.indoors = false;
     this.deps.life.sushiAway = false;
     this.headingFor = null;
+    this.visiting = null;
     this.deps.hud.setIndoors(null);
     this.deps.sounds.playMusic('village');
     this.updateActors();

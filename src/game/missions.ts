@@ -29,6 +29,10 @@ export interface Progress {
   active: ActiveMission | null;
   knapsacks: Knapsacks;
   friendCoins: Purses;
+  /** How fond each pair is of each other, keyed by the pair. See friendship.ts. */
+  friendship: Record<string, number>;
+  /** Favourites found out by giving them, such as "maguro:taiyaki". */
+  discovered: string[];
 }
 
 export interface Call {

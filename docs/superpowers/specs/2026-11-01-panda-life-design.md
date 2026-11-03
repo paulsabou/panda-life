@@ -66,6 +66,10 @@ Spending coins and other things to collect are later work. The code should not g
 - The game opens on a start screen: Continue or New game, or straight to choosing an animal if nothing is saved. A new game replaces the saved one, and there's a Back button.
 - A new game starts by choosing Sushi's animal from all 8: panda, tanuki, cat, fox, beaver, rabbit, deer or dog. Sushi keeps the name. Whoever was that animal (a friend, or Wasabi for the tanuki) becomes the panda instead, keeping their name and house, so nobody has a twin.
 - A new game opens with a short how-to-play tutorial; continuing doesn't. Skip or Esc closes it, and no call rings until it is closed.
+- Every pair among Sushi and the 6 friends has a friendship meter, 0 to 100, shown as 5 hearts with a thin bar under them. It only goes up. Wasabi just runs the shop and has none.
+- Each of them has 5 favourite objects from the shop. Any present adds 5, a favourite adds 20. Favourites start as question marks and are revealed the first time anyone gives one.
+- Tapping a friend walks Sushi up to them and opens a list of Sushi's knapsack to give from. The Friends screen shows each friend's hearts with Sushi, their favourites found so far and their best friend; the knapsack shows Sushi's own.
+- A free friend with something to spare may walk over to someone a short walk away (Sushi included, when outside) and hand it over, preferring something that person loves and keeping their own favourites. Some shopping trips are for a present for someone else.
 - Each friend has their own coins, starting at 10. A free friend who has saved 12 coins goes to the shop; otherwise they may phone another free friend with a job of 3 to 6 sticks at 2 coins a stick.
 - A friend's job pays the way Sushi's missions do, as a reward from the game and not from the asker's coins, so the village can't run out of money.
 - At the shop a friend buys one thing they can afford, usually to their taste, and sells their cheapest object first if the knapsack is full.

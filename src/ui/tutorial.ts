@@ -46,6 +46,13 @@ export function tutorialSteps(touch: boolean, animal: string): TutorialStep[] {
       text: `Find all the sticks and you earn ${COIN} coins. Spend them at Wasabi's shop!`,
     },
     {
+      picture: { emoji: '🎁' },
+      title: 'Presents',
+      text: touch
+        ? 'Tap a friend to give them something from your knapsack. Find out what they love most, and watch the ❤️ grow!'
+        : 'Click a friend to give them something from your knapsack. Find out what they love most, and watch the ❤️ grow!',
+    },
+    {
       picture: { emoji: '🎒' },
       title: 'Your buttons',
       text: '📬 Inbox keeps the calls you missed. 🎒 Knapsack holds what you buy. 👥 Friends shows what everyone is up to.',

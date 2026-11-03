@@ -11,6 +11,8 @@ const wallet = (coins: number): Progress => ({
   active: null,
   knapsacks: emptyKnapsacks(),
   friendCoins: startingPurses(),
+  friendship: {},
+  discovered: [],
 });
 
 describe('the catalogue', () => {

@@ -917,3 +917,69 @@ button {
     transform: scale(0.85);
   }
 }
+
+/* Friendship: five hearts over a thin bar, so even a small present shows. */
+.meter {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  margin-left: 4px;
+  font-size: 13px;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+
+.meter-bar {
+  display: block;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 4px;
+  background: var(--pink-soft);
+  overflow: hidden;
+}
+
+.meter-bar i {
+  display: block;
+  height: 100%;
+  background: var(--pink);
+}
+
+.loves span {
+  margin-left: 3px;
+}
+
+.secret {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  font-weight: 800;
+  font-size: 0.85em;
+}
+
+.gift .bond,
+.gift .loves,
+.knapsack .loves {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gift {
+  height: auto;
+  max-height: min(640px, calc(100vh - 40px));
+}
+
+.gift header h2 {
+  font-size: 20px;
+}
+
+.party .bond {
+  font-size: 22px;
+}
+
+.party .bond .meter {
+  font-size: 22px;
+}

@@ -1,6 +1,17 @@
 import type { Sounds } from '../audio';
 import { friendById, type FriendId } from '../game/friends';
 import { CATALOGUE, CATEGORIES, itemById, type Category } from '../game/catalogue';
+import {
+  bestFriend,
+  friendship,
+  give,
+  hearts,
+  knownFavourites,
+  MAX_FRIENDSHIP,
+  nameOf,
+  type Character,
+  type Gift,
+} from '../game/friendship';
 import { KNAPSACK_SLOTS } from '../game/knapsack';
 import type { Mission, MissionBoard, MissionEvent } from '../game/missions';
 import { buy, sell, sellPrice, type Deal } from '../game/shop';
@@ -15,6 +26,27 @@ const PARTY_MS = 3400;
 const SELL_TAB = 'Sell';
 const FRIENDS_REFRESH_MS = 1000;
 const HINT_MS = 9000;
+const ALL_HEARTS = 5;
+
+/** Five hearts, with a thin bar so even a small gift shows. */
+function meter(points: number): string {
+  const full = hearts(points);
+  return (
+    `<span class="meter" title="Friendship ${points} of ${MAX_FRIENDSHIP}">` +
+    `${'❤️'.repeat(full)}${'🤍'.repeat(ALL_HEARTS - full)}` +
+    `<span class="meter-bar"><i style="width:${(points / MAX_FRIENDSHIP) * 100}%"></i></span></span>`
+  );
+}
+
+/** Favourites found so far, with a question mark for each still a secret. */
+function loves(progress: MissionBoard['progress'], who: Character): string {
+  return knownFavourites(progress, who)
+    .map((id) => {
+      const item = id ? itemById(id) : undefined;
+      return item ? `<span title="${item.name}">${item.icon}</span>` : '<span class="secret" title="Not found out yet">?</span>';
+    })
+    .join('');
+}
 
 export interface HudActions {
   turn(step: number): void;
@@ -36,6 +68,7 @@ export class Hud {
   private knapsackOpen = false;
   private shopOpen = false;
   private friendsOpen = false;
+  private giftOpen = false;
   private controls!: HTMLElement;
   private menuButton = html<HTMLButtonElement>('<button class="pill menu-button" aria-label="Menu" aria-expanded="false">☰</button>');
   private shopTab: Category | typeof SELL_TAB = 'Food';
@@ -58,6 +91,9 @@ export class Hud {
   ) {
     this.build();
     board.subscribe((event) => this.onMission(event));
+    life.subscribe((event) => {
+      if (event.type === 'gift' && event.to === 'sushi') this.receivedGift(event.from, event.gift);
+    });
     this.refresh();
     window.addEventListener('keydown', (e) => this.onKey(e));
     window.setInterval(() => this.friendsOpen && this.renderFriends(), FRIENDS_REFRESH_MS);
@@ -65,7 +101,9 @@ export class Hud {
 
   /** True while the player is busy in a screen, when a call shouldn't interrupt. */
   get panelOpen(): boolean {
-    return this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen || this.tutorial !== null;
+    return (
+      this.inboxOpen || this.knapsackOpen || this.shopOpen || this.friendsOpen || this.giftOpen || this.tutorial !== null
+    );
   }
 
   /** A few cards on how to play. Calls wait until it is finished or skipped. */
@@ -308,6 +346,7 @@ export class Hud {
     this.knapsackOpen = false;
     this.shopOpen = false;
     this.friendsOpen = false;
+    this.giftOpen = false;
   }
 
   /** A call rings once on the top bar. Tapping it answers; otherwise it moves on to the inbox. */
@@ -482,7 +521,11 @@ export class Hud {
         html(
           `<div class="ware">
             <img class="keeper" src="${this.portraits[friend.id]}" alt="${friend.name}">
-            <span class="name">${friend.name}<small>${this.life.describe(villager)}</small><small class="owned">${items || 'Empty knapsack'}</small></span>
+            <span class="name">${friend.name}<small>${this.life.describe(villager)}</small>
+              <small class="bond">With Sushi ${meter(friendship(this.board.progress, 'sushi', friend.id))}</small>
+              <small class="loves">Loves ${loves(this.board.progress, friend.id)}</small>
+              ${this.bestFriendLine(friend.id)}
+              <small class="owned">${items || 'Empty knapsack'}</small></span>
             <span class="price">${COIN} ${friendCoins[friend.id]}</span>
           </div>`,
         ),
@@ -493,6 +536,100 @@ export class Hud {
     }
     this.overlay.replaceChildren(panel);
     goods.scrollTop = scroll;
+  }
+
+  private bestFriendLine(id: FriendId): string {
+    const best = bestFriend(this.board.progress, id);
+    return best ? `<small>Best friend: ${nameOf(best)}</small>` : '';
+  }
+
+  /** After tapping a friend: pick something from the knapsack to give them. */
+  openGift(id: FriendId): void {
+    if (this.board.call?.stage === 'talking') return;
+    this.clearOverlay();
+    this.giftOpen = true;
+    this.renderGift(id);
+  }
+
+  private renderGift(id: FriendId): void {
+    const friend = friendById(id);
+    const { progress } = this.board;
+    const items = progress.knapsacks.sushi;
+    const panel = html(
+      `<div class="panel inbox shop gift">
+        <header>
+          <img class="keeper" src="${this.portraits[id]}" alt="">
+          <h2>A present for ${friend.name}</h2>
+          <button class="close" aria-label="Close">✕</button>
+        </header>
+        <p class="bond">Friendship ${meter(friendship(progress, 'sushi', id))}</p>
+        <p class="loves">${friend.name} loves ${loves(progress, id)}</p>
+        <div class="goods"></div>
+      </div>`,
+    );
+    panel.querySelector<HTMLButtonElement>('.close')!.onclick = () => this.clearOverlay();
+    const goods = panel.querySelector('.goods')!;
+    if (items.length === 0) {
+      goods.append(html('<p class="empty">Your knapsack is empty. Buy something at Wasabi\'s shop to give!</p>'));
+    }
+    for (const held of items) {
+      const item = itemById(held.id);
+      if (!item) continue;
+      const known = knownFavourites(progress, id).includes(item.id);
+      const row = html(
+        `<div class="ware">
+          <span class="icon">${item.icon}</span>
+          <span class="name">${item.name}${known ? ' 💕' : ''}<small>You have ${held.count}</small></span>
+          <span></span>
+          <button class="yes">Give</button>
+        </div>`,
+      );
+      row.querySelector<HTMLButtonElement>('.yes')!.onclick = () => this.giveTo(id, item.id);
+      goods.append(row);
+    }
+    this.overlay.replaceChildren(panel);
+  }
+
+  private giveTo(id: FriendId, itemId: string): void {
+    const gift = give(this.board.progress, 'sushi', id, itemId);
+    if (gift === 'knapsack-full') {
+      this.toast(`${friendById(id).name}'s knapsack is full.`);
+      return;
+    }
+    if (typeof gift === 'string') return;
+    this.board.changed();
+    if (gift.favourite) this.sounds.coins();
+    else this.sounds.pick();
+    this.showThanks(id, gift);
+  }
+
+  private showThanks(id: FriendId, gift: Gift): void {
+    const friend = friendById(id);
+    this.clearOverlay();
+    this.overlay.append(
+      html(
+        `<div class="panel party">
+          <img class="face" src="${this.portraits[id]}" alt="${friend.name}">
+          <h2>${gift.favourite ? `${friend.name} loves it! 💕` : `Thank you, Sushi!`}</h2>
+          <p>${gift.item.icon} ${gift.item.name}</p>
+          <p class="bond">${meter(gift.total)}</p>
+          <p class="won">+${gift.points} ❤️</p>
+        </div>`,
+      ),
+    );
+    this.partyTimer = window.setTimeout(() => this.clearOverlay(), PARTY_MS);
+  }
+
+  /** A friend walked up and handed Sushi something. */
+  private receivedGift(from: FriendId, gift: Gift): void {
+    this.sounds.pick();
+    const loved = gift.favourite ? ' You love it! 💕' : '';
+    this.toast(`<img src="${this.portraits[from]}" alt=""> ${friendById(from).name} gave you ${gift.item.icon} ${gift.item.name}.${loved}`);
+    if (this.knapsackOpen) {
+      this.clearOverlay();
+      this.knapsackOpen = true;
+      this.renderKnapsack();
+    }
   }
 
   private toggleKnapsack(): void {
@@ -510,6 +647,7 @@ export class Hud {
       `<div class="panel inbox knapsack">
         <header><h2>🎒 Sushi's knapsack</h2><button class="close" aria-label="Close">✕</button></header>
         ${items.length === 0 ? '<p class="note">It\'s empty for now.</p>' : ''}
+        <p class="loves">You love ${loves(this.board.progress, 'sushi')}</p>
         <div class="slots"></div>
       </div>`,
     );

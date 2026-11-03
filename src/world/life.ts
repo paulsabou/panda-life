@@ -1,10 +1,12 @@
 import { chooseToBuy, chooseToSell, newJob, SHOP_AT, type Job } from '../game/botRules';
+import { itemById } from '../game/catalogue';
+import { chooseGift, chooseGiftToBuy, give, nameOf, type Character, type Gift } from '../game/friendship';
 import { friendById, type FriendId } from '../game/friends';
 import type { Progress } from '../game/missions';
 import { buy, coinsOf, sell, sellPrice } from '../game/shop';
 import type { Ground } from './collision';
 import { doorSpot, outsideSpot, type House, type Tree, type Village } from './layout';
-import { STROLL_SPEED, Walker, Wanderer } from './walker';
+import { PERSONAL_SPACE, STROLL_SPEED, Walker, Wanderer } from './walker';
 
 export const PICK_RANGE = 2.3;
 export const REGROW_SECONDS = 30;
@@ -15,6 +17,22 @@ const SHOPPING_SECONDS = 3;
 const STUCK_NUDGE = 0.8;
 const STUCK_GIVE_UP = 3;
 const MAX_NEWS = 8;
+/** How often a free friend with something spare decides to give a present. */
+const GIVE_CHANCE = 0.3;
+/** How often a shopping trip is for a present for someone else. */
+const GIFT_SHOPPING = 0.3;
+const GIVE_RANGE = 1.6;
+/** Presents go to someone a short walk away. */
+const NEARBY = 16;
+const GIVE_UP_SECONDS = 25;
+const HANDING_OVER_SECONDS = 1.5;
+/**
+ * Following someone who is moving: plan the route again once they have wandered
+ * this far from where it led, but not more often than this, as planning is slow.
+ */
+const RETARGET_DISTANCE = 2;
+const RETARGET_SECONDS = 2;
+const DOORWAY_WAIT = 0.5;
 
 function coins(amount: number): string {
   return amount === 1 ? '1 coin' : `${amount} coins`;
@@ -52,7 +70,9 @@ export type Plan =
   | { kind: 'phone'; left: number; job: Job | null }
   | { kind: 'collect'; job: Job; target: Tree | null }
   | { kind: 'to-shop' }
-  | { kind: 'in-shop'; left: number };
+  | { kind: 'in-shop'; left: number }
+  | { kind: 'to-give'; to: Character; item: string; left: number; aim: [number, number] | null; replanIn: number }
+  | { kind: 'giving'; left: number };
 
 export class Villager extends Wanderer {
   plan: Plan = { kind: 'stroll' };
@@ -77,7 +97,10 @@ export class Villager extends Wanderer {
   }
 }
 
-export type LifeEvent = { type: 'news'; text: string } | { type: 'picked'; tree: Tree };
+export type LifeEvent =
+  | { type: 'news'; text: string }
+  | { type: 'picked'; tree: Tree }
+  | { type: 'gift'; from: FriendId; to: Character; gift: Gift };
 
 type Listener = (event: LifeEvent) => void;
 
@@ -125,6 +148,8 @@ export class VillageLife {
     }
     if (plan.kind === 'to-shop') return 'Off to the shop';
     if (plan.kind === 'in-shop') return 'At the shop';
+    if (plan.kind === 'to-give') return `Taking a present to ${nameOf(plan.to)}`;
+    if (plan.kind === 'giving') return 'Giving a present';
     return 'Strolling near home';
   }
 
@@ -148,20 +173,84 @@ export class VillageLife {
       this.collect(v, plan, others, seconds);
     } else if (plan.kind === 'to-shop') {
       this.walkToShop(v, others, seconds);
+    } else if (plan.kind === 'to-give') {
+      this.takePresent(v, plan, others, seconds);
+    } else if (plan.kind === 'giving') {
+      v.moving = false;
+      plan.left -= seconds;
+      if (plan.left <= 0) v.strollHome(this.ground);
     } else {
       plan.left -= seconds;
-      if (plan.left <= 0) this.leaveShop(v);
+      if (plan.left <= 0) this.leaveShop(v, plan);
     }
   }
 
-  /** The rules a free friend follows: shop if they can, otherwise maybe give someone a job. */
+  /** The rules a free friend follows: shop if they can, maybe give a present, otherwise maybe give someone a job. */
   private decide(v: Villager): void {
     v.thinkIn = 5 + this.rng() * 8;
     if (coinsOf(this.progress, v.id) >= SHOP_AT) {
       this.setOff(v);
       return;
     }
+    if (this.rng() < GIVE_CHANCE && this.setOffWithPresent(v)) return;
     if (this.rng() < 0.6) this.askForHelp(v);
+  }
+
+  /** Someone to give to, standing in the village: another friend, or Sushi when outside. */
+  private walkerFor(who: Character): Walker | null {
+    if (who === 'sushi') return this.sushiAway ? null : this.sushi;
+    const villager = this.villagers.find((v) => v.id === who);
+    return villager && !villager.hidden ? villager : null;
+  }
+
+  private setOffWithPresent(v: Villager): boolean {
+    const candidates = (['sushi', ...this.villagers.map((o) => o.id)] as Character[]).filter((who) => {
+      const other = this.walkerFor(who);
+      return other && Math.hypot(other.x - v.x, other.y - v.y) <= NEARBY;
+    });
+    const choice = chooseGift(this.progress, v.id, candidates, this.rng);
+    if (!choice) return false;
+    v.speed = ERRAND_SPEED;
+    v.plan = { kind: 'to-give', to: choice.to, item: choice.item, left: GIVE_UP_SECONDS, aim: null, replanIn: 0 };
+    return true;
+  }
+
+  /** Walk up to them, following as they move, and hand it over. */
+  private takePresent(v: Villager, plan: Extract<Plan, { kind: 'to-give' }>, others: Walker[], seconds: number): void {
+    plan.left -= seconds;
+    const target = this.walkerFor(plan.to);
+    if (!target || plan.left <= 0) {
+      v.strollHome(this.ground);
+      return;
+    }
+    if (Math.hypot(target.x - v.x, target.y - v.y) <= GIVE_RANGE) {
+      v.stopRoute();
+      v.moving = false;
+      this.handOver(v, plan);
+      return;
+    }
+    plan.replanIn -= seconds;
+    const moved = !plan.aim || Math.hypot(target.x - plan.aim[0], target.y - plan.aim[1]) > RETARGET_DISTANCE;
+    if ((moved || !v.walkingARoute) && plan.replanIn <= 0) {
+      plan.aim = [target.x, target.y];
+      plan.replanIn = RETARGET_SECONDS;
+      v.walkTo(this.ground, plan.aim);
+    }
+    this.walkOn(v, others, seconds, () => {
+      plan.aim = null;
+    });
+  }
+
+  private handOver(v: Villager, plan: Extract<Plan, { kind: 'to-give' }>): void {
+    const gift = give(this.progress, v.id, plan.to, plan.item);
+    if (typeof gift === 'string') {
+      v.strollHome(this.ground);
+      return;
+    }
+    v.plan = { kind: 'giving', left: HANDING_OVER_SECONDS };
+    const loved = gift.favourite ? ' 💕 A favourite!' : '';
+    this.say(`${friendById(v.id).name} gave ${nameOf(plan.to)} a present: ${gift.item.name}.${loved}`);
+    this.emit({ type: 'gift', from: v.id, to: plan.to, gift });
   }
 
   private setOff(v: Villager): void {
@@ -248,9 +337,16 @@ export class VillageLife {
     this.walkOn(v, others, seconds, () => v.walkTo(this.ground, doorSpot(this.shop)));
   }
 
-  private leaveShop(v: Villager): void {
+  /** Shop, then step out, waiting inside a moment if someone is standing in the doorway. */
+  private leaveShop(v: Villager, plan: Extract<Plan, { kind: 'in-shop' }>): void {
+    const [x, y] = outsideSpot(this.shop);
+    // Who is there now, as someone else may have stepped out this very moment.
+    if (this.present().some((o) => Math.hypot(o.x - x, o.y - y) < PERSONAL_SPACE)) {
+      plan.left = DOORWAY_WAIT;
+      return;
+    }
     this.trade(v);
-    [v.x, v.y] = outsideSpot(this.shop);
+    [v.x, v.y] = [x, y];
     v.hidden = false;
     v.strollHome(this.ground);
   }
@@ -261,7 +357,8 @@ export class VillageLife {
     if (unwanted && sell(this.progress, v.id, unwanted.id) === 'done') {
       this.say(`${name} sold: ${unwanted.name} (${coins(sellPrice(unwanted))}).`);
     }
-    const wanted = chooseToBuy(this.progress, v.id, this.rng);
+    const present = this.rng() < GIFT_SHOPPING ? chooseGiftToBuy(this.progress, v.id, this.rng) : undefined;
+    const wanted = (present && itemById(present)) || chooseToBuy(this.progress, v.id, this.rng);
     if (wanted && buy(this.progress, v.id, wanted.id) === 'done') {
       this.say(`${name} bought: ${wanted.name} (${coins(wanted.price)}).`);
     }

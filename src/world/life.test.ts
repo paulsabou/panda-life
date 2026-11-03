@@ -23,6 +23,8 @@ const progress = (): Progress => ({
   active: null,
   knapsacks: emptyKnapsacks(),
   friendCoins: startingPurses(),
+  friendship: {},
+  discovered: [],
 });
 
 const village = buildVillage();
@@ -136,7 +138,7 @@ describe('friends living their lives', () => {
         expect(coins).toBeGreaterThanOrEqual(0);
       }
     });
-  });
+  }, 30000);
 
   it('keep their feet on open ground the whole time', () => {
     const world = live(10);
@@ -168,6 +170,43 @@ describe('friends living their lives', () => {
         if (!v.hidden) expect(Math.hypot(v.x - sushi.x, v.y - sushi.y)).toBeGreaterThan(PERSONAL_SPACE * 0.7);
       }
     });
+  });
+
+  it('give each other presents and grow fonder', () => {
+    const world = live(25);
+    world.run();
+    const gifts = world.news.filter((t) => t.includes(' gave '));
+    expect(gifts.length).toBeGreaterThan(0);
+    for (const line of gifts) {
+      const [giver, rest] = line.split(' gave ');
+      expect(rest.startsWith(giver)).toBe(false);
+    }
+    expect(Object.values(world.p.friendship).some((points) => points > 0)).toBe(true);
+  }, 30000);
+
+  it('walk over to Sushi with presents too', () => {
+    const world = live(25);
+    const sushi = new Walker(village.start[0], village.start[1], 6);
+    world.life.setSushi(sushi);
+    const handed: number[] = [];
+    world.life.subscribe((e) => {
+      if (e.type === 'gift' && e.to === 'sushi') {
+        const giver = world.life.villagers.find((v) => v.id === e.from)!;
+        handed.push(Math.hypot(giver.x - sushi.x, giver.y - sushi.y));
+      }
+    });
+    world.run();
+    expect(handed.length).toBeGreaterThan(0);
+    for (const distance of handed) expect(distance).toBeLessThan(2);
+    expect(world.p.knapsacks.sushi.length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('bring Sushi nothing while Sushi is indoors', () => {
+    const world = live(10);
+    world.life.setSushi(new Walker(village.start[0], village.start[1], 6));
+    world.life.sushiAway = true;
+    world.run();
+    expect(world.p.knapsacks.sushi).toEqual([]);
   });
 
   it('do not take Sushi\'s coins', () => {

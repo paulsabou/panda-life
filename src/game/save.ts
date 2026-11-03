@@ -1,4 +1,5 @@
 import { CHARACTER_IDS, type CharacterId } from '../art/characters';
+import { restoreDiscovered, restoreFriendship } from './friendship';
 import { emptyKnapsacks, restoreKnapsacks, restorePurses, startingPurses } from './knapsack';
 import type { Progress } from './missions';
 
@@ -8,7 +9,16 @@ const ANIMAL_KEY = 'panda-life-animal-v1';
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
 function freshProgress(): Progress {
-  return { coins: 0, nextId: 1, inbox: [], active: null, knapsacks: emptyKnapsacks(), friendCoins: startingPurses() };
+  return {
+    coins: 0,
+    nextId: 1,
+    inbox: [],
+    active: null,
+    knapsacks: emptyKnapsacks(),
+    friendCoins: startingPurses(),
+    friendship: {},
+    discovered: [],
+  };
 }
 
 export function hasSavedGame(storage: Store): boolean {
@@ -26,6 +36,8 @@ export function loadProgress(storage: Store): Progress {
         active: saved.active ?? null,
         knapsacks: restoreKnapsacks(saved.knapsacks),
         friendCoins: restorePurses(saved.friendCoins),
+        friendship: restoreFriendship(saved.friendship),
+        discovered: restoreDiscovered(saved.discovered),
       };
     }
   } catch {

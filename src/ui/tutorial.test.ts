@@ -19,6 +19,10 @@ describe('tutorialSteps', () => {
     expect(tutorialSteps(true, 'panda')).toHaveLength(tutorialSteps(false, 'panda').length);
   });
 
+  it('explains presents', () => {
+    expect(tutorialSteps(true, 'panda').some((s) => s.title === 'Presents' && s.text.startsWith('Tap a friend'))).toBe(true);
+  });
+
   it('says which animal Sushi is', () => {
     expect(tutorialSteps(false, 'fox')[0].text).toContain("I'm a fox");
   });

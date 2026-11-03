@@ -23,6 +23,8 @@ describe('saving progress', () => {
       active: null,
       knapsacks: emptyKnapsacks(),
       friendCoins: startingPurses(),
+      friendship: {},
+      discovered: [],
     });
   });
 
@@ -35,6 +37,8 @@ describe('saving progress', () => {
       active: { mission: { id: 3, friend: 'ebi' as const, sticks: 5, reward: 10 }, collected: 2 },
       knapsacks: { ...emptyKnapsacks(), sushi: [{ id: 'bamboo', name: 'Bamboo stick', count: 2 }] },
       friendCoins: { ...startingPurses(), inari: 31 },
+      friendship: { 'inari|sushi': 25 },
+      discovered: ['inari:tofu'],
     };
     saveProgress(progress, storage);
     expect(loadProgress(storage)).toEqual(progress);
@@ -52,6 +56,8 @@ describe('saving progress', () => {
     expect(progress.coins).toBe(40);
     expect(progress.knapsacks).toEqual(emptyKnapsacks());
     expect(progress.friendCoins.ebi).toBe(STARTING_FRIEND_COINS);
+    expect(progress.friendship).toEqual({});
+    expect(progress.discovered).toEqual([]);
   });
 
   it('starts fresh if the save is damaged', () => {
