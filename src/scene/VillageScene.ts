@@ -25,7 +25,7 @@ import type { MissionBoard } from '../game/missions';
 import { PICK_RANGE, REGROW_SECONDS, Villager, type Plan, type VillageLife } from '../world/life';
 import type { Hud } from '../ui/hud';
 import { Collision } from '../world/collision';
-import { depthAmong } from '../world/depth';
+import { depthAmong, railFootprints } from '../world/depth';
 import {
   HOUSE_SIZE,
   WORLD_H,
@@ -93,9 +93,6 @@ interface Rail {
   key: string;
   image: Phaser.GameObjects.Image;
 }
-
-/** How close Sushi must be to a bridge for its railings to be layered around Sushi. */
-const RAIL_NEARBY = 2;
 
 interface BambooClump {
   tree: Tree;
@@ -334,7 +331,8 @@ export class VillageScene extends Phaser.Scene {
     this.rails.forEach((rail) => {
       const key = this.railKey(rail, r);
       const [x, y] = this.railSpots.get(key)!;
-      rail.image.setTexture(key).setPosition(x, y);
+      const [far, near] = railFootprints(rail.bridge, r, STANDING_DEPTH);
+      rail.image.setTexture(key).setPosition(x, y).setDepth((rail.near ? near : far).depth);
     });
   }
 
@@ -478,7 +476,6 @@ export class VillageScene extends Phaser.Scene {
       actor.tag?.setPosition(x, y - 100);
       if (walker instanceof Villager) this.showErrand(actor, walker, x, y);
     }
-    this.layerRails();
   }
 
   private actorDepth(walker: Walker): number {
@@ -494,6 +491,8 @@ export class VillageScene extends Phaser.Scene {
         depth: this.houseDepth(house),
       };
     });
+    // Railings are long and thin, so walkers on a deck are layered between them along its whole length.
+    for (const bridge of this.deps.village.bridges) footprints.push(...railFootprints(bridge, this.rotation, STANDING_DEPTH));
     return depthAmong(vx, vy, STANDING_DEPTH + vx + vy, footprints);
   }
 
@@ -505,23 +504,6 @@ export class VillageScene extends Phaser.Scene {
     const showing = visible && villager.plan.kind in BUBBLES;
     actor.bubble?.setVisible(showing);
     if (showing) actor.bubble?.setTexture(`bubble-${villager.plan.kind}`).setPosition(x, y - 128);
-  }
-
-  private layerRails(): void {
-    const sushi = this.sushi.walker;
-    const depth = this.sushi.image.depth;
-    for (const rail of this.rails) {
-      const { x0, x1, y0, y1 } = rail.bridge;
-      const onIt =
-        sushi.x >= x0 - RAIL_NEARBY && sushi.x <= x1 + RAIL_NEARBY && sushi.y >= y0 - RAIL_NEARBY && sushi.y <= y1 + RAIL_NEARBY;
-      if (!onIt) {
-        // Away from Sushi a railing is layered by where it stands, like a fence.
-        rail.image.setDepth(STANDING_DEPTH + depthOf(this.rotation, (x0 + x1) / 2, rail.y));
-        continue;
-      }
-      const inFront = this.rotation < 2 ? sushi.y < rail.y : sushi.y > rail.y;
-      rail.image.setDepth(depth + (inFront ? 0.02 : -0.02));
-    }
   }
 
   private updateBamboo(): void {

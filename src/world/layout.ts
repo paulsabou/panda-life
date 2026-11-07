@@ -70,11 +70,11 @@ const HOUSE_SPOTS: [number, number][] = (
 const SHOP_SPOT = shift([18, 21]);
 /** Homes around the old village, in the order the newer friends joined: Nori, Toro, Ume, Tako, Mochi, Saba. */
 export const NEW_HOUSE_SPOTS: [number, number][] = [
-  [30, 36],
+  [48, 26],
   [96, 28],
   [104, 68],
   [56, 102],
-  [34, 58],
+  [28, 84],
   [98, 100],
 ];
 /** The shop has its own look, after the four house styles. */

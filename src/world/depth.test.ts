@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { depthAmong } from './depth';
+import { depthAmong, railFootprints } from './depth';
+import { rotate, type Rotation } from './iso';
 
 const box = (x: number, y: number, w: number, d: number) => ({ x, y, w, d, depth: x + y + (w + d) / 2 });
 
@@ -27,5 +28,27 @@ describe('who is drawn in front', () => {
     const crate = box(4.6, 10.2, 2, 1.3);
     const shelf = box(8.6, 3, 1.1, 3.4);
     expect(depthAmong(7.2, 2.2, 9.4, [crate, shelf])).toBeLessThan(shelf.depth);
+  });
+});
+
+describe('bridge railings', () => {
+  const bridge = { x0: 61, x1: 72, y0: 68, y1: 72 };
+
+  it.each([0, 1, 2, 3] as Rotation[])('keep anyone on the deck between them, all along it, at rotation %i', (r) => {
+    const rails = railFootprints(bridge, r, 0);
+    const depths = rails.map((f) => f.depth);
+    for (const x of [61.5, 64, 66.5, 69, 71.5]) {
+      for (const y of [68.6, 70, 71.4]) {
+        const [vx, vy] = rotate(r, x, y);
+        const depth = depthAmong(vx, vy, vx + vy, rails);
+        expect(depth, `${x},${y}`).toBeGreaterThan(Math.min(...depths));
+        expect(depth, `${x},${y}`).toBeLessThan(Math.max(...depths));
+      }
+    }
+  });
+
+  it('leave anyone well off the bridge alone', () => {
+    const [vx, vy] = rotate(0, 40, 70);
+    expect(depthAmong(vx, vy, vx + vy, railFootprints(bridge, 0, 0))).toBe(vx + vy);
   });
 });

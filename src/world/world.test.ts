@@ -51,6 +51,14 @@ describe('the village', () => {
     }
   });
 
+  it('gives every friend a neighbour close enough to meet and swap presents', () => {
+    const homes = village.houses.filter((h) => h.owner);
+    for (const home of homes) {
+      const nearest = Math.min(...homes.filter((h) => h !== home).map((h) => Math.hypot(h.x - home.x, h.y - home.y)));
+      expect(nearest, home.owner!.name).toBeLessThanOrEqual(18);
+    }
+  });
+
   it('keeps trees well apart', () => {
     for (const a of village.trees) {
       for (const b of village.trees) {

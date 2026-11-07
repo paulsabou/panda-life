@@ -873,6 +873,8 @@ button {
 .start-card.animals {
   width: min(780px, 100%);
   max-height: calc(100vh - 40px);
+  /* On phones 100vh reaches under the browser's toolbar; dvh is what is really visible. */
+  max-height: calc(100dvh - 40px);
   overflow-y: auto;
   touch-action: pan-y;
 }

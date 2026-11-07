@@ -1,3 +1,6 @@
+import { depthOf, rotate, type Rotation } from './iso';
+import type { Bridge } from './layout';
+
 export interface Footprint {
   x: number;
   y: number;
@@ -24,4 +27,25 @@ export function depthAmong(x: number, y: number, base: number, footprints: reado
   if (base < lowest) return lowest + 0.05;
   if (base > highest) return highest - 0.05;
   return base;
+}
+
+const RAIL_HALF_THICKNESS = 0.05;
+
+/**
+ * A bridge's two railings as long thin footprints at this map angle, so anyone
+ * on the deck is drawn in front of the far railing and behind the near one.
+ * `base` is added to each railing's depth, as it is to everything standing.
+ */
+export function railFootprints(bridge: Bridge, r: Rotation, base: number): Footprint[] {
+  return [bridge.y0, bridge.y1].map((y) => {
+    const a = rotate(r, bridge.x0, y - RAIL_HALF_THICKNESS);
+    const b = rotate(r, bridge.x1, y + RAIL_HALF_THICKNESS);
+    return {
+      x: Math.min(a[0], b[0]),
+      y: Math.min(a[1], b[1]),
+      w: Math.abs(a[0] - b[0]),
+      d: Math.abs(a[1] - b[1]),
+      depth: base + depthOf(r, (bridge.x0 + bridge.x1) / 2, y),
+    };
+  });
 }
