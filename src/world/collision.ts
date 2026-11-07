@@ -18,14 +18,22 @@ export interface Ground {
 }
 
 export class Collision implements Ground {
-  private solids: Solid[];
+  /** Each tile lists the trees close enough to block feet standing on it. */
+  private solidsByTile = new Map<number, Solid[]>();
 
   constructor(private village: Village) {
-    this.solids = village.trees.map((t) => ({
-      x: t.x + 0.5,
-      y: t.y + 0.5,
-      r: t.kind === 'bamboo' ? BAMBOO_RADIUS : TREE_RADIUS,
-    }));
+    for (const t of village.trees) {
+      const solid = { x: t.x + 0.5, y: t.y + 0.5, r: t.kind === 'bamboo' ? BAMBOO_RADIUS : TREE_RADIUS };
+      const reach = solid.r + FOOT_RADIUS;
+      for (let ty = Math.floor(solid.y - reach); ty <= Math.floor(solid.y + reach); ty++) {
+        for (let tx = Math.floor(solid.x - reach); tx <= Math.floor(solid.x + reach); tx++) {
+          const key = ty * MAP_SIZE + tx;
+          const list = this.solidsByTile.get(key);
+          if (list) list.push(solid);
+          else this.solidsByTile.set(key, [solid]);
+        }
+      }
+    }
   }
 
   /** True if a character's feet can't stand here. Characters also avoid each other, see `Walker`. */
@@ -35,7 +43,8 @@ export class Collision implements Ground {
       if (this.groundSolid(x + Math.cos(a) * FOOT_RADIUS, y + Math.sin(a) * FOOT_RADIUS)) return true;
     }
     if (this.groundSolid(x, y)) return true;
-    return this.solids.some((s) => Math.hypot(s.x - x, s.y - y) < s.r + FOOT_RADIUS);
+    const nearby = this.solidsByTile.get(Math.floor(y) * MAP_SIZE + Math.floor(x));
+    return !!nearby && nearby.some((s) => Math.hypot(s.x - x, s.y - y) < s.r + FOOT_RADIUS);
   }
 
   private groundSolid(x: number, y: number): boolean {

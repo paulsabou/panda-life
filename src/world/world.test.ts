@@ -102,6 +102,20 @@ describe('collision', () => {
     expect(collision.blocked(tree.x + 0.5, tree.y + 0.5)).toBe(true);
   });
 
+  it('blocks exactly where a tree-by-tree check would', () => {
+    const near = (x: number, y: number) =>
+      village.trees.some((t) => Math.hypot(t.x + 0.5 - x, t.y + 0.5 - y) < (t.kind === 'bamboo' ? 0.9 : 0.65) + 0.45);
+    for (const t of village.trees.slice(0, 20)) {
+      for (let dy = -2; dy <= 2; dy += 0.25) {
+        for (let dx = -2; dx <= 2; dx += 0.25) {
+          const x = t.x + 0.5 + dx;
+          const y = t.y + 0.5 + dy;
+          if (near(x, y)) expect(collision.blocked(x, y)).toBe(true);
+        }
+      }
+    }
+  });
+
   it('keeps every friend on open ground at the start', () => {
     for (const r of village.residents) expect(collision.blocked(r.x, r.y)).toBe(false);
   });
