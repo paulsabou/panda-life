@@ -10,9 +10,10 @@ import {
   screenToWorld,
   unrotate,
   unrotateDelta,
+  type Pair,
   type Rotation,
 } from './iso';
-import { buildVillage, doorSpot, houseAtDoor } from './layout';
+import { NEW_HOUSE_SPOTS, buildVillage, doorSpot, houseAtDoor } from './layout';
 import { findPath } from './path';
 
 const village = buildVillage();
@@ -88,6 +89,54 @@ describe('the village', () => {
     expect(village.trees.filter((t) => t.kind === 'bamboo').length).toBeGreaterThanOrEqual(12);
   });
 
+  it('is twice as wide and tall as before', () => {
+    expect(MAP_SIZE).toBe(140);
+    expect(village.tiles).toHaveLength(140);
+  });
+
+  it('keeps the old village in the middle, in the same shape', () => {
+    const old = [[8, 8], [20, 6], [52, 7], [57, 20], [7, 50], [22, 54], [50, 53]];
+    old.forEach(([x, y], i) => expect([village.houses[i].x, village.houses[i].y]).toEqual([x + 35, y + 35]));
+    const shop = village.houses.find((h) => h.isShop)!;
+    expect([shop.x, shop.y]).toEqual([18 + 35, 21 + 35]);
+  });
+
+  it('has two bridges, each crossing the whole river', () => {
+    expect(village.bridges).toHaveLength(2);
+    for (const b of village.bridges) {
+      for (let y = b.y0; y < b.y1; y++) {
+        village.tiles[y].forEach((tile, x) => {
+          if (x >= b.x0 - 3 && x <= b.x1 + 3) expect(tile).not.toBe('water');
+        });
+      }
+    }
+  });
+
+  it('crosses by the south bridge in the south', () => {
+    const south = village.bridges[1];
+    const from: Pair = [south.x0 - 4, (south.y0 + south.y1) / 2];
+    const to: Pair = [south.x1 + 4, (south.y0 + south.y1) / 2];
+    const path = findPath(collision, from, to);
+    expect(path.length).toBeGreaterThan(0);
+    expect(Math.hypot(path.at(-1)![0] - to[0], path.at(-1)![1] - to[1])).toBeLessThan(1);
+    expect(path.every(([, y]) => y > village.bridges[0].y1)).toBe(true);
+  });
+
+  // In the old village one path already ran on under the shop, and the old village keeps its shape.
+  it('never puts a new house on the road or the river', () => {
+    for (const [hx, hy] of NEW_HOUSE_SPOTS) {
+      for (let y = 0; y < HOUSE_SIZE; y++) {
+        for (let x = 0; x < HOUSE_SIZE; x++) expect(village.tiles[hy + y][hx + x], `${hx},${hy}`).toBe('grass');
+      }
+    }
+  });
+
+  it('plans routes across the whole village quickly', () => {
+    const started = performance.now();
+    for (const h of village.houses) findPath(collision, village.start, doorSpot(h));
+    expect(performance.now() - started).toBeLessThan(1500);
+  });
+
   it('starts Sushi somewhere free', () => {
     expect(collision.blocked(...village.start)).toBe(false);
   });
@@ -96,8 +145,8 @@ describe('the village', () => {
 describe('collision', () => {
   it('blocks water, houses and trees', () => {
     const tree = village.trees[0];
-    const water = village.tiles[50].indexOf('water');
-    expect(collision.blocked(water + 2.5, 50.5)).toBe(true);
+    const water = village.tiles[85].indexOf('water');
+    expect(collision.blocked(water + 2.5, 85.5)).toBe(true);
     expect(collision.blocked(village.houses[0].x + 2, village.houses[0].y + 2)).toBe(true);
     expect(collision.blocked(tree.x + 0.5, tree.y + 0.5)).toBe(true);
   });
@@ -120,12 +169,13 @@ describe('collision', () => {
     for (const r of village.residents) expect(collision.blocked(r.x, r.y)).toBe(false);
   });
 
-  it('lets Sushi cross the bridge but not its railings', () => {
-    const { x0, x1, y0, y1 } = village.bridge;
-    const mid = (x0 + x1) / 2;
-    expect(collision.blocked(mid, (y0 + y1) / 2)).toBe(false);
-    expect(collision.blocked(mid, y1)).toBe(true);
-    expect(collision.blocked(mid, y0)).toBe(true);
+  it('lets Sushi cross the bridges but not their railings', () => {
+    for (const { x0, x1, y0, y1 } of village.bridges) {
+      const mid = (x0 + x1) / 2;
+      expect(collision.blocked(mid, (y0 + y1) / 2)).toBe(false);
+      expect(collision.blocked(mid, y1)).toBe(true);
+      expect(collision.blocked(mid, y0)).toBe(true);
+    }
   });
 });
 
@@ -146,7 +196,7 @@ describe('finding a route', () => {
   });
 
   it('never leads through anything solid', () => {
-    const path = findPath(collision, village.start, [64.5, 34.5]);
+    const path = findPath(collision, village.start, [99.5, 69.5]);
     let [x, y] = village.start;
     for (const [nx, ny] of path) {
       for (let t = 0; t <= 1; t += 0.05) expect(collision.blocked(x + (nx - x) * t, y + (ny - y) * t)).toBe(false);
@@ -155,8 +205,8 @@ describe('finding a route', () => {
   });
 
   it('crosses the river by the bridge', () => {
-    const { x0, x1, y0, y1 } = village.bridge;
-    const path = findPath(collision, village.start, [64.5, 34.5]);
+    const { x0, x1, y0, y1 } = village.bridges[0];
+    const path = findPath(collision, village.start, [99.5, 69.5]);
     let [x, y] = village.start;
     let onBridge = false;
     for (const [nx, ny] of path) {

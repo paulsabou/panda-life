@@ -52,7 +52,8 @@ export class Collision implements Ground {
     const ty = Math.floor(y);
     if (tx < 0 || ty < 0 || tx >= MAP_SIZE || ty >= MAP_SIZE) return true;
     if (this.village.tiles[ty][tx] === 'water' || this.village.houseTiles.has(`${tx},${ty}`)) return true;
-    const { x0, x1, y0, y1 } = this.village.bridge;
-    return x >= x0 && x <= x1 && (Math.abs(y - y0) < RAIL_THICKNESS || Math.abs(y - y1) < RAIL_THICKNESS);
+    return this.village.bridges.some(
+      ({ x0, x1, y0, y1 }) => x >= x0 && x <= x1 && (Math.abs(y - y0) < RAIL_THICKNESS || Math.abs(y - y1) < RAIL_THICKNESS),
+    );
   }
 }

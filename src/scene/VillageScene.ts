@@ -43,6 +43,7 @@ import {
   houseAt,
   houseAtDoor,
   outsideSpot,
+  type Bridge,
   type House,
   type Tree,
   type Village,
@@ -86,10 +87,15 @@ interface Actor {
 }
 
 interface Rail {
+  bridge: Bridge;
   y: number;
   near: boolean;
+  key: string;
   image: Phaser.GameObjects.Image;
 }
+
+/** How close Sushi must be to a bridge for its railings to be layered around Sushi. */
+const RAIL_NEARBY = 2;
 
 interface BambooClump {
   tree: Tree;
@@ -168,11 +174,13 @@ export class VillageScene extends Phaser.Scene {
       }
     }
 
-    const { y0, y1 } = village.bridge;
-    this.rails = [
-      { y: y0, near: false, image: this.add.image(0, 0, this.railKey(0, 0)).setOrigin(0, 0).setScale(1 / SPRITE_SCALE) },
-      { y: y1, near: true, image: this.add.image(0, 0, this.railKey(1, 0)).setOrigin(0, 0).setScale(1 / SPRITE_SCALE) },
-    ];
+    this.rails = village.bridges.flatMap((bridge, b) =>
+      [false, true].map((near) => {
+        const rail = { bridge, y: near ? bridge.y1 : bridge.y0, near, key: `rail-${b}-${near ? 1 : 0}` };
+        const image = this.add.image(0, 0, this.railKey(rail, 0)).setOrigin(0, 0).setScale(1 / SPRITE_SCALE);
+        return { ...rail, image };
+      }),
+    );
 
     this.sushi = this.addActor('sushi', new Walker(village.start[0], village.start[1], SUSHI_SPEED), SUSHI_STEPS_PER_SECOND);
     for (const [kind, icon] of Object.entries(BUBBLES)) this.textures.addCanvas(`bubble-${kind}`, paintBubble(icon));
@@ -281,13 +289,12 @@ export class VillageScene extends Phaser.Scene {
     return key;
   }
 
-  private railKey(index: number, r: Rotation): string {
-    const key = `rail-${index}-${r}`;
+  private railKey(rail: Omit<Rail, 'image'>, r: Rotation): string {
+    const key = `${rail.key}-${r}`;
     if (!this.textures.exists(key)) {
-      const { bridge } = this.deps.village;
-      const rail = paintRail(bridge, index ? bridge.y1 : bridge.y0, index === 1, r);
-      this.textures.addCanvas(key, rail.canvas);
-      this.railSpots.set(key, [rail.x, rail.y]);
+      const picture = paintRail(rail.bridge, rail.y, rail.near, r);
+      this.textures.addCanvas(key, picture.canvas);
+      this.railSpots.set(key, [picture.x, picture.y]);
     }
     return key;
   }
@@ -324,8 +331,8 @@ export class VillageScene extends Phaser.Scene {
     }
     const [tagX, tagY] = project(r, this.shop.x + HOUSE_SIZE / 2, this.shop.y + HOUSE_SIZE / 2, 190);
     this.shopTag.setPosition(tagX, tagY);
-    this.rails.forEach((rail, index) => {
-      const key = this.railKey(index, r);
+    this.rails.forEach((rail) => {
+      const key = this.railKey(rail, r);
       const [x, y] = this.railSpots.get(key)!;
       rail.image.setTexture(key).setPosition(x, y);
     });
@@ -504,6 +511,14 @@ export class VillageScene extends Phaser.Scene {
     const sushi = this.sushi.walker;
     const depth = this.sushi.image.depth;
     for (const rail of this.rails) {
+      const { x0, x1, y0, y1 } = rail.bridge;
+      const onIt =
+        sushi.x >= x0 - RAIL_NEARBY && sushi.x <= x1 + RAIL_NEARBY && sushi.y >= y0 - RAIL_NEARBY && sushi.y <= y1 + RAIL_NEARBY;
+      if (!onIt) {
+        // Away from Sushi a railing is layered by where it stands, like a fence.
+        rail.image.setDepth(STANDING_DEPTH + depthOf(this.rotation, (x0 + x1) / 2, rail.y));
+        continue;
+      }
       const inFront = this.rotation < 2 ? sushi.y < rail.y : sushi.y > rail.y;
       rail.image.setDepth(depth + (inFront ? 0.02 : -0.02));
     }

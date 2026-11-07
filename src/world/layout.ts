@@ -42,7 +42,8 @@ export interface Village {
   residents: Resident[];
   trees: Tree[];
   flowers: Flower[];
-  bridge: Bridge;
+  /** The old bridge in the middle, then the one in the south. */
+  bridges: Bridge[];
   start: [number, number];
   /** Tiles taken up by a house, as "x,y". */
   houseTiles: Set<string>;
@@ -51,24 +52,45 @@ export interface Village {
 export const ROUND_TREE_STYLES = 6;
 export const BAMBOO_STYLES = 4;
 
-const HOUSE_SPOTS: [number, number][] = [
-  [8, 8],
-  [20, 6],
-  [52, 7],
-  [57, 20],
-  [7, 50],
-  [22, 54],
-  [50, 53],
+/** The first village was 70 tiles square. It sits in the middle of today's, moved by this much. */
+export const OLD_VILLAGE_OFFSET = 35;
+const shift = ([x, y]: [number, number]): [number, number] => [x + OLD_VILLAGE_OFFSET, y + OLD_VILLAGE_OFFSET];
+
+const HOUSE_SPOTS: [number, number][] = (
+  [
+    [8, 8],
+    [20, 6],
+    [52, 7],
+    [57, 20],
+    [7, 50],
+    [22, 54],
+    [50, 53],
+  ] as [number, number][]
+).map(shift);
+const SHOP_SPOT = shift([18, 21]);
+/** Homes around the old village, in the order the newer friends joined: Nori, Toro, Ume, Tako, Mochi, Saba. */
+export const NEW_HOUSE_SPOTS: [number, number][] = [
+  [30, 36],
+  [96, 28],
+  [104, 68],
+  [56, 102],
+  [34, 58],
+  [98, 100],
 ];
-const SHOP_SPOT: [number, number] = [18, 21];
 /** The shop has its own look, after the four house styles. */
 export const SHOP_STYLE = 4;
 const DOOR_MIDDLE = HOUSE_SIZE / 2;
 const DOOR_HALF_WIDTH = 1.1;
 const DOOR_REACH = 0.85;
 const RIVER_WIDTH = 6;
-const BRIDGE_ROWS: [number, number] = [33, 36];
-const BRIDGE_COLUMNS: [number, number] = [26, 36];
+interface BridgeSpot {
+  rows: [number, number];
+  columns: [number, number];
+}
+const BRIDGE_SPOTS: BridgeSpot[] = [
+  { rows: [68, 71], columns: [61, 71] },
+  { rows: [110, 113], columns: [71, 81] },
+];
 const TREE_GAP = 11;
 const BAMBOO_CHANCE = 0.16;
 const ROUND_TREE_CHANCE = 0.08;
@@ -83,43 +105,69 @@ function rng(seed: number): () => number {
   };
 }
 
-function roadRow(x: number): number {
-  const fromBridge = x - 31;
+/** A road wanders across the village but runs straight over its bridge. */
+function wanderingRow(x: number, bridgeX: number, centre: number, swing: number): number {
+  const fromBridge = x - bridgeX;
   const ease = Math.max(0, Math.min(1, (Math.abs(fromBridge) - 8) / 6));
-  return Math.round(34 + 6 * Math.sin(fromBridge / 9) * ease);
+  return Math.round(centre + swing * Math.sin(fromBridge / 9) * ease);
 }
 
+function mainRoadRow(x: number): number {
+  return wanderingRow(x, 66, 69, 6);
+}
+
+function southRoadRow(x: number): number {
+  return wanderingRow(x, 76, 111, 4);
+}
+
+const ROADS = [mainRoadRow, southRoadRow];
+
+function riverX(y: number): number {
+  return Math.round(68 + 7 * Math.sin((y - 35) / 9));
+}
+
+/** A path from each door to a road: the old village's go to the main road as they always did, newer homes to the nearest. */
 function layGround(tiles: Tile[][]): void {
   for (let y = 0; y < MAP_SIZE; y++) {
-    const riverX = Math.round(33 + 7 * Math.sin(y / 9));
-    for (let i = 0; i < RIVER_WIDTH; i++) tiles[y][riverX + i] = 'water';
+    const x0 = riverX(y);
+    for (let i = 0; i < RIVER_WIDTH; i++) tiles[y][x0 + i] = 'water';
   }
   const lay = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE || tiles[y][x] === 'water') return;
     tiles[y][x] = 'path';
   };
-  for (let x = 0; x < MAP_SIZE; x++) {
-    const row = roadRow(x);
-    lay(x, row);
-    lay(x, row + 1);
-    if (x > 0) {
-      const from = Math.min(row, roadRow(x - 1));
-      const to = Math.max(row, roadRow(x - 1)) + 1;
-      for (let y = from; y <= to; y++) lay(x, y);
+  for (const roadRow of ROADS) {
+    for (let x = 0; x < MAP_SIZE; x++) {
+      const row = roadRow(x);
+      lay(x, row);
+      lay(x, row + 1);
+      if (x > 0) {
+        const from = Math.min(row, roadRow(x - 1));
+        const to = Math.max(row, roadRow(x - 1)) + 1;
+        for (let y = from; y <= to; y++) lay(x, y);
+      }
     }
   }
-  for (let y = BRIDGE_ROWS[0]; y <= BRIDGE_ROWS[1]; y++) {
-    for (let x = BRIDGE_COLUMNS[0]; x <= BRIDGE_COLUMNS[1]; x++) tiles[y][x] = 'bridge';
+  for (const { rows, columns } of BRIDGE_SPOTS) {
+    for (let y = rows[0]; y <= rows[1]; y++) {
+      for (let x = columns[0]; x <= columns[1]; x++) tiles[y][x] = 'bridge';
+    }
   }
-  for (const [hx, hy] of [...HOUSE_SPOTS, SHOP_SPOT]) {
+  const homes = [
+    ...[...HOUSE_SPOTS, SHOP_SPOT].map((spot) => ({ spot, roads: [mainRoadRow] })),
+    ...NEW_HOUSE_SPOTS.map((spot) => ({ spot, roads: ROADS })),
+  ];
+  for (const { spot, roads } of homes) {
+    const [hx, hy] = spot;
     const doorX = hx + 2;
     const doorY = hy + HOUSE_SIZE;
-    if (hy < 30) {
-      for (let y = doorY; y <= roadRow(doorX); y++) lay(doorX, y);
+    const road = roads.reduce((best, next) => (Math.abs(next(doorX) - doorY) < Math.abs(best(doorX) - doorY) ? next : best));
+    if (road(doorX) >= doorY) {
+      for (let y = doorY; y <= road(doorX); y++) lay(doorX, y);
     } else {
       const side = hx - 1;
       for (let x = doorX; x >= side; x--) lay(x, doorY);
-      for (let y = doorY; y >= roadRow(side); y--) lay(side, y);
+      for (let y = doorY; y >= road(side); y--) lay(side, y);
     }
   }
 }
@@ -151,15 +199,16 @@ export function buildVillage(seed = 40): Village {
     for (let y = 0; y < HOUSE_SIZE; y++) for (let x = 0; x < HOUSE_SIZE; x++) houseTiles.add(`${h.x + x},${h.y + y}`);
     clear(h.x - 3, h.x + HOUSE_SIZE + 8, h.y - 3, h.y + HOUSE_SIZE + 8);
   }
-  const bridge: Bridge = {
-    x0: BRIDGE_COLUMNS[0],
-    x1: BRIDGE_COLUMNS[1] + 1,
-    y0: BRIDGE_ROWS[0],
-    y1: BRIDGE_ROWS[1] + 1,
-  };
-  clear(bridge.x0 - 3, bridge.x1 + 12, bridge.y0 - 3, bridge.y1 + 12);
-  const start: [number, number] = [14.5, roadRow(14) + 0.5];
-  clear(11, 18, roadRow(14) - 3, roadRow(14) + 4);
+  const bridges: Bridge[] = BRIDGE_SPOTS.map(({ rows, columns }) => ({
+    x0: columns[0],
+    x1: columns[1] + 1,
+    y0: rows[0],
+    y1: rows[1] + 1,
+  }));
+  for (const bridge of bridges) clear(bridge.x0 - 3, bridge.x1 + 12, bridge.y0 - 3, bridge.y1 + 12);
+  const startX = 14 + OLD_VILLAGE_OFFSET;
+  const start: [number, number] = [startX + 0.5, mainRoadRow(startX) + 0.5];
+  clear(startX - 3, startX + 4, mainRoadRow(startX) - 3, mainRoadRow(startX) + 4);
 
   const trees: Tree[] = [];
   const flowers: Flower[] = [];
@@ -180,7 +229,7 @@ export function buildVillage(seed = 40): Village {
     }
   }
 
-  return { tiles, houses, residents, trees, flowers, bridge, start, houseTiles };
+  return { tiles, houses, residents, trees, flowers, bridges, start, houseTiles };
 }
 
 /** Where Sushi stands to walk in: the door is in the middle of a house's +y wall. */

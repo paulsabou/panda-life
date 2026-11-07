@@ -163,7 +163,7 @@ describe('friends living their lives', () => {
 
   it('do not walk through Sushi', () => {
     const world = live(10);
-    const sushi = new Walker(village.bridge.x0 + 3, (village.bridge.y0 + village.bridge.y1) / 2, 6);
+    const sushi = new Walker(village.bridges[0].x0 + 3, (village.bridges[0].y0 + village.bridges[0].y1) / 2, 6);
     world.life.setSushi(sushi);
     world.run(() => {
       for (const v of world.life.villagers) {

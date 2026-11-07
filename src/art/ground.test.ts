@@ -17,7 +17,7 @@ describe('ground pieces', () => {
     for (const p of groundPieces(0)) expect(Math.max(p.w, p.h)).toBeLessThanOrEqual(GROUND_PIECE);
   });
 
-  it.skip('skips the empty sky in the corners', () => {
+  it('skips the empty sky in the corners', () => {
     const grid = Math.ceil(WORLD_W / GROUND_PIECE) * Math.ceil(WORLD_H / GROUND_PIECE);
     expect(groundPieces(0).length).toBeLessThan(grid);
   });

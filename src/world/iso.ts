@@ -1,6 +1,6 @@
 export const TILE_W = 46;
 export const TILE_H = 23;
-export const MAP_SIZE = 70;
+export const MAP_SIZE = 140;
 export const HOUSE_SIZE = 5;
 export const WORLD_W = MAP_SIZE * TILE_W + 80;
 export const WORLD_H = MAP_SIZE * TILE_H + 180;
