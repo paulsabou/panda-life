@@ -1,7 +1,7 @@
 import { HOUSE_SIZE, MAP_SIZE, TILE_H, TILE_W, WORLD_H, WORLD_W, project, projectView, type Rotation } from '../world/iso';
 import type { Bridge, Village } from '../world/layout';
 
-export const GROUND_SCALE = Math.min(1.2, 4096 / WORLD_W);
+export const GROUND_SCALE = 1.2;
 export const SPRITE_SCALE = 2;
 
 /** Where each picture's anchor sits, in world pixels from the top left of its canvas. */
@@ -134,29 +134,94 @@ function flower(c: Ctx, x: number, y: number): void {
   }
 }
 
-/** Everything flat: grass, paths, river, bridge deck and flowers, for one map rotation. */
-export function paintGround(village: Village, r: Rotation): HTMLCanvasElement {
-  const [canvas, c] = newCanvas(WORLD_W, WORLD_H, GROUND_SCALE);
-  const sky = c.createLinearGradient(0, 0, 0, WORLD_H);
+/** The side of one ground piece, in world pixels. Small enough for any phone to hold. */
+export const GROUND_PIECE = 1024;
+const GROUND_SIDE = 16;
+
+/** A rectangle of the ground, in world pixels. */
+export interface GroundPiece {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** The grid of pieces over the world, keeping only those the map reaches into. */
+export function groundPieces(r: Rotation): GroundPiece[] {
+  // The map is a square, so it covers the same diamond from every angle.
+  void r;
+  const columns = Math.ceil(WORLD_W / GROUND_PIECE);
+  const rows = Math.ceil(WORLD_H / GROUND_PIECE);
+  const used = new Uint8Array(columns * rows);
+  const mark = (x0: number, y0: number, x1: number, y1: number) => {
+    const c0 = Math.max(0, Math.floor(x0 / GROUND_PIECE));
+    const c1 = Math.min(columns - 1, Math.floor(x1 / GROUND_PIECE));
+    const r0 = Math.max(0, Math.floor(y0 / GROUND_PIECE));
+    const r1 = Math.min(rows - 1, Math.floor(y1 / GROUND_PIECE));
+    for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) used[row * columns + col] = 1;
+  };
+  const N = MAP_SIZE;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const [left] = projectView(x, y + 1);
+      const [right] = projectView(x + 1, y);
+      const [, top] = projectView(x, y);
+      const [, bottom] = projectView(x + 1, y + 1);
+      const edge = x === N - 1 || y === N - 1 ? GROUND_SIDE : 0;
+      mark(left, top, right, bottom + edge);
+    }
+  }
+  const pieces: GroundPiece[] = [];
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      if (!used[row * columns + col]) continue;
+      const x = col * GROUND_PIECE;
+      const y = row * GROUND_PIECE;
+      pieces.push({ x, y, w: Math.min(GROUND_PIECE, WORLD_W - x), h: Math.min(GROUND_PIECE, WORLD_H - y) });
+    }
+  }
+  return pieces;
+}
+
+/** The sky behind the village, to be stretched over the whole world. */
+export function paintSky(): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 4;
+  canvas.height = 256;
+  const c = canvas.getContext('2d')!;
+  const sky = c.createLinearGradient(0, 0, 0, 256);
   sky.addColorStop(0, PALETTE.skyTop);
   sky.addColorStop(1, PALETTE.skyBottom);
   c.fillStyle = sky;
-  c.fillRect(0, 0, WORLD_W, WORLD_H);
+  c.fillRect(0, 0, 4, 256);
+  return canvas;
+}
 
-  const side = 16;
+/** Everything flat in one piece of the ground: grass, paths, river, bridge decks and flowers. */
+export function paintGroundPiece(village: Village, r: Rotation, piece: GroundPiece): HTMLCanvasElement {
+  const [canvas, c] = newCanvas(piece.w, piece.h, GROUND_SCALE);
+  c.translate(-piece.x, -piece.y);
+  const margin = 2;
+  const overlaps = (x0: number, y0: number, x1: number, y1: number) =>
+    x1 >= piece.x - margin && x0 <= piece.x + piece.w + margin && y1 >= piece.y - margin && y0 <= piece.y + piece.h + margin;
+
   const N = MAP_SIZE;
-  poly(c, [projectView(0, N), projectView(N, N), projectView(N, N, -side), projectView(0, N, -side)], PALETTE.sideLeft);
-  poly(c, [projectView(N, 0), projectView(N, N), projectView(N, N, -side), projectView(N, 0, -side)], PALETTE.sideRight);
+  poly(c, [projectView(0, N), projectView(N, N), projectView(N, N, -GROUND_SIDE), projectView(0, N, -GROUND_SIDE)], PALETTE.sideLeft);
+  poly(c, [projectView(N, 0), projectView(N, N), projectView(N, N, -GROUND_SIDE), projectView(N, 0, -GROUND_SIDE)], PALETTE.sideRight);
 
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
+      const corners = [project(r, x, y), project(r, x + 1, y), project(r, x + 1, y + 1), project(r, x, y + 1)];
+      const xs = corners.map((p) => p[0]);
+      const ys = corners.map((p) => p[1]);
+      if (!overlaps(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys))) continue;
       const tile = village.tiles[y][x];
       const fill =
         tile === 'water' ? PALETTE.water :
         tile === 'path' ? PALETTE.path :
         tile === 'bridge' ? PALETTE.plank :
         (x + y) % 2 ? PALETTE.grassA : PALETTE.grassB;
-      poly(c, [project(r, x, y), project(r, x + 1, y), project(r, x + 1, y + 1), project(r, x, y + 1)], fill, fill);
+      poly(c, corners, fill, fill);
       const [mx, my] = project(r, x + 0.5, y + 0.5);
       if (tile === 'water' && (x * 3 + y * 5) % 4 === 0) {
         c.strokeStyle = 'rgba(255,255,255,.75)';
@@ -183,7 +248,7 @@ export function paintGround(village: Village, r: Rotation): HTMLCanvasElement {
   }
   for (const f of village.flowers) {
     const [x, y] = project(r, f.x + 0.5, f.y + 0.5);
-    flower(c, x, y);
+    if (overlaps(x - 14, y - 10, x + 14, y + 10)) flower(c, x, y);
   }
   return canvas;
 }

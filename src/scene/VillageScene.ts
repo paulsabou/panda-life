@@ -8,7 +8,9 @@ import {
   SPRITE_SCALE,
   TREE_CANVAS,
   paintBamboo,
-  paintGround,
+  groundPieces,
+  paintGroundPiece,
+  paintSky,
   paintHouse,
   paintNameTag,
   paintPlusOne,
@@ -114,7 +116,8 @@ export class VillageScene extends Phaser.Scene {
   private rotation: Rotation = 0;
   private turning = false;
   private collision: Collision;
-  private ground!: Phaser.GameObjects.Image;
+  private groundImages: Phaser.GameObjects.Image[] = [];
+  private groundTextures: string[] = [];
   private houses: { house: House; image: Phaser.GameObjects.Image }[] = [];
   private trees: { tree: Tree; image: Phaser.GameObjects.Image }[] = [];
   private bamboo: BambooClump[] = [];
@@ -140,7 +143,8 @@ export class VillageScene extends Phaser.Scene {
     this.addStaticTextures();
     const { village } = this.deps;
 
-    this.ground = this.add.image(0, 0, this.groundKey(0)).setOrigin(0, 0).setScale(1 / GROUND_SCALE).setDepth(GROUND_DEPTH);
+    this.textures.addCanvas('sky', paintSky());
+    this.add.image(0, 0, 'sky').setOrigin(0, 0).setDisplaySize(WORLD_W, WORLD_H).setDepth(GROUND_DEPTH - 0.5);
 
     this.houses = village.houses.map((house) => ({
       house,
@@ -253,12 +257,22 @@ export class VillageScene extends Phaser.Scene {
     this.textures.addCanvas('tap-ring', paintTapRing());
   }
 
-  // Pictures for the other three map angles are painted the first time they're needed.
+  // House and rail pictures for the other three map angles are painted the first time they're needed.
 
-  private groundKey(r: Rotation): string {
-    const key = `ground-${r}`;
-    if (!this.textures.exists(key)) this.textures.addCanvas(key, paintGround(this.deps.village, r));
-    return key;
+  /** Paints the ground for this map angle, piece by piece, and lets go of the last angle's pieces. */
+  private layGround(r: Rotation): void {
+    for (const image of this.groundImages) image.destroy();
+    for (const key of this.groundTextures) this.textures.remove(key);
+    this.groundImages = [];
+    this.groundTextures = [];
+    groundPieces(r).forEach((piece, i) => {
+      const key = `ground-${r}-${i}`;
+      this.textures.addCanvas(key, paintGroundPiece(this.deps.village, r, piece));
+      this.groundTextures.push(key);
+      this.groundImages.push(
+        this.add.image(piece.x, piece.y, key).setOrigin(0, 0).setScale(1 / GROUND_SCALE).setDepth(GROUND_DEPTH),
+      );
+    });
   }
 
   private houseKey(style: number, r: Rotation): string {
@@ -296,7 +310,7 @@ export class VillageScene extends Phaser.Scene {
   /** Puts everything fixed where it belongs for the current map angle. */
   private placeWorld(): void {
     const r = this.rotation;
-    this.ground.setTexture(this.groundKey(r));
+    this.layGround(r);
 
     for (const { house, image } of this.houses) {
       const a = rotate(r, house.x, house.y);
