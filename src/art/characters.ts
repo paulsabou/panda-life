@@ -94,6 +94,25 @@ function pointedEar(x: number, tip: number, fur: string, inner: string): string 
   );
 }
 
+/** A small horn with a round knob, as giraffes have. */
+function ossicone(x: number, lean: number, look: Look): string {
+  const d = `M${x} 40L${x + lean} 0`;
+  return line(d, 16, INK) + line(d, 10, look.fur) + `<circle cx="${x + lean}" cy="-4" r="11" fill="${look.limb}" ${stroke(3)}/>`;
+}
+
+/** A bushy tail with dark rings round it, seen from the front on the right of the body. */
+function ringedTail(look: Look, id: string): string {
+  return (
+    `<g id="${id}">` +
+    oval(192, 212, 26, 50, 28, look.fur) +
+    oval(184, 230, 22, 6, 28, look.limb, false) +
+    oval(195, 210, 23, 6, 28, look.limb, false) +
+    oval(205, 191, 20, 6, 28, look.limb, false) +
+    oval(213, 176, 12, 12, 28, look.limb, false) +
+    '</g>'
+  );
+}
+
 /** The left and right ear, drawn square on. They slide as the head turns. */
 function ears(id: CharacterId, look: Look, showInner: boolean): [string, string] {
   const inner = showInner ? PINK : look.fur;
@@ -137,15 +156,35 @@ function ears(id: CharacterId, look: Look, showInner: boolean): [string, string]
     case 'dog':
       return ['', ''];
     case 'giraffe':
-    case 'elephant':
-    case 'redPanda':
-    case 'raccoon':
-    case 'hamster':
-    case 'horse':
       return [
-        oval(52, 46, 21, 21, 0, look.fur) + oval(52, 46, 10, 10, 0, inner, false),
-        oval(188, 46, 21, 21, 0, look.fur) + oval(188, 46, 10, 10, 0, inner, false),
+        `<g id="ossicones">${ossicone(90, -6, look)}</g>` + oval(34, 64, 28, 12, -24, look.fur) + oval(34, 64, 15, 6, -24, inner, false),
+        ossicone(150, 6, look) + oval(206, 64, 28, 12, 24, look.fur) + oval(206, 64, 15, 6, 24, inner, false),
       ];
+    case 'elephant': {
+      const inside = showInner ? '#ffc9d6' : look.limb;
+      return [
+        oval(40, 96, 38, 54, -8, look.fur) + oval(44, 98, 24, 38, -8, inside, false),
+        oval(200, 96, 38, 54, 8, look.fur) + oval(196, 98, 24, 38, 8, inside, false),
+      ];
+    }
+    case 'redPanda': {
+      const rim = showInner ? '#ffffff' : look.fur;
+      return [pointedEar(62, 4, look.fur, rim), pointedEar(178, 4, look.fur, rim)];
+    }
+    case 'raccoon': {
+      const middle = showInner ? '#e8e6ea' : look.limb;
+      return [
+        oval(58, 40, 25, 25, 0, look.limb) + oval(58, 42, 14, 14, 0, middle, false),
+        oval(182, 40, 25, 25, 0, look.limb) + oval(182, 42, 14, 14, 0, middle, false),
+      ];
+    }
+    case 'hamster':
+      return [
+        oval(64, 38, 16, 16, 0, look.fur) + oval(64, 38, 8, 8, 0, inner, false),
+        oval(176, 38, 16, 16, 0, look.fur) + oval(176, 38, 8, 8, 0, inner, false),
+      ];
+    case 'horse':
+      return [pointedEar(74, -14, look.fur, inner), pointedEar(166, -14, look.fur, inner)];
   }
 }
 
@@ -175,13 +214,30 @@ function tail(id: CharacterId, look: Look): string {
     case 'dog':
       return line('M172 240Q214 232 200 192', 24, INK) + line('M172 240Q214 232 200 192', 17, look.fur);
     case 'giraffe':
+      return line('M172 244Q206 236 202 200', 10, INK) + line('M172 244Q206 236 202 200', 5, look.fur) + oval(202, 194, 8, 13, 0, look.limb);
     case 'elephant':
+      return line('M172 244Q200 240 198 214', 9, INK) + line('M172 244Q200 240 198 214', 5, look.fur) + oval(198, 210, 6, 9, 0, look.limb);
     case 'redPanda':
+      return ringedTail(look, 'ringed-tail');
     case 'raccoon':
+      return ringedTail(look, 'striped-tail');
     case 'hamster':
+      return oval(178, 246, 9, 9, 0, look.fur);
     case 'horse':
-      return oval(180, 244, 17, 17, 0, look.fur);
+      return line('M172 236Q232 230 214 292', 28, INK) + line('M172 236Q232 230 214 292', 21, '#5a3520');
   }
+}
+
+/** Anything worn on top of the head, over the face: just the horse's mane for now. */
+function crest(id: CharacterId): string {
+  if (id !== 'horse') return '';
+  return (
+    '<g id="mane">' +
+    oval(98, 34, 24, 15, -24, '#5a3520') +
+    oval(142, 34, 24, 15, 24, '#5a3520') +
+    oval(120, 26, 24, 17, 0, '#5a3520') +
+    '</g>'
+  );
 }
 
 /** Markings that move across the head with the face. */
@@ -206,12 +262,47 @@ function markings(id: CharacterId, look: Look): string {
       );
     case 'dog':
       return oval(120, 134, 44, 30, 0, '#fffaf0', false) + oval(160, 86, 40, 36, 0, look.limb, false);
+    case 'giraffe':
+      return (
+        oval(120, 138, 42, 28, 0, '#fff4d6', false) +
+        oval(84, 52, 13, 10, 20, look.limb, false) +
+        oval(154, 48, 15, 11, -15, look.limb, false) +
+        oval(120, 36, 9, 7, 0, look.limb, false) +
+        oval(176, 84, 10, 8, 10, look.limb, false)
+      );
+    case 'redPanda':
+      return (
+        oval(68, 130, 32, 26, 0, '#fff', false) +
+        oval(172, 130, 32, 26, 0, '#fff', false) +
+        oval(120, 142, 28, 20, 0, '#fff', false) +
+        oval(84, 66, 13, 7, -10, '#fff', false) +
+        oval(156, 66, 13, 7, 10, '#fff', false)
+      );
+    case 'raccoon':
+      return (
+        line('M120 28V62', 12, look.limb) +
+        oval(82, 72, 22, 8, -8, '#fff', false) +
+        oval(158, 72, 22, 8, 8, '#fff', false) +
+        '<path id="mask" d="M36 100Q78 80 120 100Q162 80 204 100Q206 128 162 126Q120 114 78 126Q34 128 36 100Z" fill="#3f3b44"/>' +
+        oval(120, 140, 36, 24, 0, '#fff', false)
+      );
+    case 'hamster':
+      return (
+        '<g id="cheeks">' +
+        oval(60, 132, 38, 32, 0, '#fff8ee', false) +
+        oval(180, 132, 38, 32, 0, '#fff8ee', false) +
+        oval(120, 142, 30, 20, 0, '#fff8ee', false) +
+        '</g>'
+      );
+    case 'horse':
+      return oval(120, 72, 11, 34, 0, '#fff', false) + oval(120, 138, 40, 26, 0, '#e3b48c', false);
     default:
       return '';
   }
 }
 
 function nose(id: CharacterId): string {
+  if (id === 'elephant') return '';
   if (id === 'sushi' || id === 'cat' || id === 'rabbit') {
     return `<path d="M114 122Q120 118 126 122Q124 130 120 131Q116 130 114 122Z" fill="#ff7fa8" ${stroke(2)}/>`;
   }
@@ -227,6 +318,10 @@ function mouthExtras(id: CharacterId): string {
     );
   }
   if (id === 'dog') return `<path d="M114 142Q120 164 126 142Z" fill="#ff8fa8" ${stroke(2.5)}/>`;
+  if (id === 'elephant') {
+    const d = 'M120 112Q116 150 124 166Q132 178 144 166';
+    return `<g id="trunk">${line(d, 30, INK)}${line(d, 23, LOOKS.elephant.fur)}${line('M112 132H128M114 148H130', 2.5, INK)}</g>`;
+  }
   return '';
 }
 
@@ -403,6 +498,7 @@ export function characterSvg(id: CharacterId, pose: Pose, phase: number | null):
     whiskers +
     `<g transform="translate(${leftEarAt} 0)">${leftFlop}</g>` +
     `<g transform="translate(${rightEarAt} 0)">${rightFlop}</g>` +
+    `<g transform="translate(${earSlide} 0)">${crest(id)}</g>` +
     bow +
     '</g></svg>'
   );

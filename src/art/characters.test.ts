@@ -48,3 +48,16 @@ describe('knapsacks', () => {
     }
   });
 });
+
+describe('the newer animals', () => {
+  it.each([
+    ['giraffe', 'ossicones'],
+    ['elephant', 'trunk'],
+    ['redPanda', 'ringed-tail'],
+    ['raccoon', 'mask'],
+    ['hamster', 'cheeks'],
+    ['horse', 'mane'],
+  ] as const)('draws the %s with its %s', (id, feature) => {
+    expect(characterSvg(id, 'front', null)).toContain(`id="${feature}"`);
+  });
+});
