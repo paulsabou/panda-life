@@ -1,6 +1,30 @@
-export type AnimalKind = 'cat' | 'fox' | 'beaver' | 'rabbit' | 'deer' | 'dog';
+export type AnimalKind =
+  | 'cat'
+  | 'fox'
+  | 'beaver'
+  | 'rabbit'
+  | 'deer'
+  | 'dog'
+  | 'giraffe'
+  | 'elephant'
+  | 'redPanda'
+  | 'raccoon'
+  | 'hamster'
+  | 'horse';
 
-export type FriendId = 'maguro' | 'inari' | 'unagi' | 'tamago' | 'ikura' | 'ebi';
+export type FriendId =
+  | 'maguro'
+  | 'inari'
+  | 'unagi'
+  | 'tamago'
+  | 'ikura'
+  | 'ebi'
+  | 'nori'
+  | 'toro'
+  | 'ume'
+  | 'tako'
+  | 'mochi'
+  | 'saba';
 
 export interface Friend {
   id: FriendId;
@@ -53,6 +77,48 @@ export const FRIENDS: readonly Friend[] = [
     kind: 'dog',
     ask: 'Woof woof! Sushi-chan! Let\'s play! Can you fetch {n} bamboo sticks?',
     thanks: 'Woof! Best fetch ever! Thank you!',
+  },
+  {
+    id: 'nori',
+    name: 'Nori',
+    kind: 'giraffe',
+    ask: 'Sushi-chan! From up here I can see bamboo everywhere. Could you bring me {n} sticks?',
+    thanks: 'Wonderful! I could see your kindness from way up here!',
+  },
+  {
+    id: 'toro',
+    name: 'Toro',
+    kind: 'elephant',
+    ask: 'Paoon! Sushi-chan, I need {n} bamboo sticks for my snack. Will you help a big friend?',
+    thanks: 'Paoon! I will never forget this, Sushi-chan!',
+  },
+  {
+    id: 'ume',
+    name: 'Ume',
+    kind: 'redPanda',
+    ask: "Um... Sushi-chan? If it's okay... could you find me {n} bamboo sticks?",
+    thanks: 'Oh... thank you so much, Sushi-chan. You are so kind.',
+  },
+  {
+    id: 'tako',
+    name: 'Tako',
+    kind: 'raccoon',
+    ask: "Psst, Sushi-chan! I'm building something secret. I need {n} bamboo sticks!",
+    thanks: 'Hehe! My secret is safe with you. Thanks, Sushi-chan!',
+  },
+  {
+    id: 'mochi',
+    name: 'Mochi',
+    kind: 'hamster',
+    ask: 'Squeak! Sushi-chan, my cheeks are empty! Can you bring {n} bamboo sticks?',
+    thanks: 'Squeak squeak! My cheeks are full and happy!',
+  },
+  {
+    id: 'saba',
+    name: 'Saba',
+    kind: 'horse',
+    ask: 'Neigh! Sushi-chan, race you! First one to find {n} bamboo sticks wins!',
+    thanks: 'Neigh! You win, Sushi-chan! Thank you!',
   },
 ];
 

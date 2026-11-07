@@ -53,6 +53,12 @@ export const THEMES: Record<ThemeId, Theme> = {
   tamago: { id: 'tamago', title: "Tamago's Garden Hop", scale: MINYO, root: 69, bpm: 88, lead: 'musicbox', accompaniment: 'marimba', chords: [0, 3, 4, 0], pattern: BOUNCY },
   ikura: { id: 'ikura', title: 'Ikura in the Cedar Woods', scale: HIRAJOSHI, root: 57, bpm: 60, lead: 'flute', accompaniment: 'koto', chords: [0, 3, 2, 0], pattern: FLOWING },
   ebi: { id: 'ebi', title: 'Ebi Chases Butterflies', scale: RYUKYU, root: 67, bpm: 92, lead: 'marimba', accompaniment: 'musicbox', chords: [0, 3, 2, 0], pattern: BOUNCY },
+  nori: { id: 'nori', title: 'Nori Above the Treetops', scale: YO, root: 64, bpm: 68, lead: 'flute', accompaniment: 'chime', chords: [0, 2, 4, 0], pattern: FLOWING },
+  toro: { id: 'toro', title: "Toro's Big Warm Kitchen", scale: MINYO, root: 53, bpm: 62, lead: 'marimba', accompaniment: 'pad', chords: [0, 3, 2, 0], pattern: ROLLING },
+  ume: { id: 'ume', title: 'Ume Under the Plum Blossom', scale: HIRAJOSHI, root: 67, bpm: 58, lead: 'koto', accompaniment: 'musicbox', chords: [0, 2, 3, 0], pattern: SPARSE },
+  tako: { id: 'tako', title: "Tako's Secret Workshop", scale: KUMOI, root: 60, bpm: 86, lead: 'marimba', accompaniment: 'koto', chords: [0, 4, 2, 0], pattern: BOUNCY },
+  mochi: { id: 'mochi', title: "Mochi's Midnight Snack", scale: RYUKYU, root: 69, bpm: 80, lead: 'musicbox', accompaniment: 'chime', chords: [0, 3, 4, 0], pattern: BOUNCY },
+  saba: { id: 'saba', title: 'Saba Gallops the Meadow', scale: YO, root: 59, bpm: 90, lead: 'koto', accompaniment: 'marimba', chords: [0, 2, 3, 4], pattern: ROLLING },
 };
 
 /** The tune after this one, going round them all. */

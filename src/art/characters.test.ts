@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { POSES, characterSvg, type CharacterId } from './characters';
+import { CHARACTER_IDS, POSES, characterSvg } from './characters';
 
-const CHARACTERS: CharacterId[] = ['sushi', 'tanuki', 'cat', 'fox', 'beaver', 'rabbit', 'deer', 'dog'];
+const CHARACTERS = CHARACTER_IDS;
 
 describe('knapsacks', () => {
   it.each(CHARACTERS)('%s carries one in every pose and step', (id) => {

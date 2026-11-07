@@ -19,6 +19,12 @@ export const TASTES: Record<FriendId, Category> = {
   tamago: 'Food',
   ikura: 'Home',
   ebi: 'Play & wear',
+  nori: 'Books & study',
+  toro: 'Food',
+  ume: 'Home',
+  tako: 'Kitchen',
+  mochi: 'Food',
+  saba: 'Play & wear',
 };
 
 export interface Job {

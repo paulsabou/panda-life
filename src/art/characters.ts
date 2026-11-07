@@ -3,7 +3,22 @@ import type { Pose } from '../world/walker';
 
 export type CharacterId = 'sushi' | 'tanuki' | AnimalKind;
 
-export const CHARACTER_IDS: readonly CharacterId[] = ['sushi', 'tanuki', 'cat', 'fox', 'beaver', 'rabbit', 'deer', 'dog'];
+export const CHARACTER_IDS: readonly CharacterId[] = [
+  'sushi',
+  'tanuki',
+  'cat',
+  'fox',
+  'beaver',
+  'rabbit',
+  'deer',
+  'dog',
+  'giraffe',
+  'elephant',
+  'redPanda',
+  'raccoon',
+  'hamster',
+  'horse',
+];
 
 export const POSES: readonly Pose[] = ['front', 'frontSide', 'side', 'backSide', 'back'];
 export const WALK_FRAMES = 6;
@@ -36,6 +51,12 @@ const LOOKS: Record<CharacterId, Look> = {
   deer: { fur: '#e3b27c', limb: '#c78f58', dress: '#8edb8f', dress2: '#67c26e', accent: '#fff1b8', stripe: '#c3eec3', iris: '#b8875a', shoe: '#67c26e' },
   tanuki: { fur: '#b5937a', limb: '#5f4a3c', dress: '#e7643f', dress2: '#c94f2e', accent: '#ffd166', stripe: '#f3c9a8', iris: '#ffd166', shoe: '#5f4a3c' },
   dog: { fur: '#f7dcae', limb: '#c98f5c', dress: '#86cdec', dress2: '#62b5dd', accent: '#ffd166', stripe: '#bfe6f6', iris: '#a8d8ff', shoe: '#62b5dd' },
+  giraffe: { fur: '#ffd27a', limb: '#d9924e', dress: '#c5e86c', dress2: '#a6d14a', accent: '#ff9fb4', stripe: '#e6f5bd', iris: '#b8875a', shoe: '#a6d14a' },
+  elephant: { fur: '#b9c3d6', limb: '#97a3ba', dress: '#f59ad8', dress2: '#e57cc4', accent: '#ffffff', stripe: '#fcd3ef', iris: '#8fa9f0', shoe: '#e57cc4' },
+  redPanda: { fur: '#d9673a', limb: '#4a2e2a', dress: '#9be8c4', dress2: '#6fd3a6', accent: '#fff1b8', stripe: '#d3f5e5', iris: '#ffd166', shoe: '#6fd3a6' },
+  raccoon: { fur: '#a9a6ad', limb: '#5d5960', dress: '#ff6f7d', dress2: '#e8505f', accent: '#fff1b8', stripe: '#ffc2c8', iris: '#a8d8ff', shoe: '#e8505f' },
+  hamster: { fur: '#f4c58a', limb: '#e0a868', dress: '#ffb37a', dress2: '#f2954c', accent: '#ffffff', stripe: '#ffdcc0', iris: '#c9a07c', shoe: '#f2954c' },
+  horse: { fur: '#b77a4d', limb: '#8a5534', dress: '#4f6fe6', dress2: '#3b58cc', accent: '#ffd166', stripe: '#c2cfff', iris: '#c9a07c', shoe: '#3b58cc' },
 };
 
 /** How far the character has turned from facing us: 0 is square on, 1 is side on. */
@@ -115,6 +136,16 @@ function ears(id: CharacterId, look: Look, showInner: boolean): [string, string]
       ];
     case 'dog':
       return ['', ''];
+    case 'giraffe':
+    case 'elephant':
+    case 'redPanda':
+    case 'raccoon':
+    case 'hamster':
+    case 'horse':
+      return [
+        oval(52, 46, 21, 21, 0, look.fur) + oval(52, 46, 10, 10, 0, inner, false),
+        oval(188, 46, 21, 21, 0, look.fur) + oval(188, 46, 10, 10, 0, inner, false),
+      ];
   }
 }
 
@@ -143,6 +174,13 @@ function tail(id: CharacterId, look: Look): string {
       return oval(178, 240, 12, 15, 0, '#fff');
     case 'dog':
       return line('M172 240Q214 232 200 192', 24, INK) + line('M172 240Q214 232 200 192', 17, look.fur);
+    case 'giraffe':
+    case 'elephant':
+    case 'redPanda':
+    case 'raccoon':
+    case 'hamster':
+    case 'horse':
+      return oval(180, 244, 17, 17, 0, look.fur);
   }
 }
 

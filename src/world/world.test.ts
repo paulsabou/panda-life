@@ -59,7 +59,9 @@ describe('the village', () => {
     }
   });
 
-  it('gives each of the six friends their own house, plus one for Sushi', () => {
+  it('gives every friend their own house, plus one for Sushi', () => {
+    expect(FRIENDS).toHaveLength(12);
+    expect(village.houses.find((h) => h.owner?.id === 'saba')).toMatchObject({ x: 98, y: 100 });
     const homes = village.houses.filter((h) => !h.isShop);
     expect(homes).toHaveLength(FRIENDS.length + 1);
     expect(homes[0].owner).toBeNull();

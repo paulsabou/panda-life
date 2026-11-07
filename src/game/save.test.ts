@@ -15,6 +15,26 @@ function memoryStorage(initial?: string) {
 }
 
 describe('saving progress', () => {
+  it('loads a save from before the new friends, keeping the old friends as they were', () => {
+    const store = memoryStorage(
+      JSON.stringify({
+        coins: 7,
+        nextId: 3,
+        inbox: [],
+        active: null,
+        knapsacks: { sushi: [], maguro: [{ id: 'apple', name: 'Apple', count: 2 }], inari: [], unagi: [], tamago: [], ikura: [], ebi: [] },
+        friendCoins: { maguro: 30, inari: 10, unagi: 10, tamago: 10, ikura: 10, ebi: 4 },
+        friendship: { 'maguro|sushi': 40 },
+        discovered: ['maguro:taiyaki'],
+      }),
+    );
+    const p = loadProgress(store);
+    expect(p.friendCoins).toMatchObject({ maguro: 30, ebi: 4, nori: 10, toro: 10, ume: 10, tako: 10, mochi: 10, saba: 10 });
+    expect(p.knapsacks.maguro).toEqual([{ id: 'apple', name: 'Apple', count: 2 }]);
+    expect(p.knapsacks.saba).toEqual([]);
+    expect(p.friendship['maguro|sushi']).toBe(40);
+  });
+
   it('starts fresh with nothing saved', () => {
     expect(loadProgress(memoryStorage())).toEqual({
       coins: 0,

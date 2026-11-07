@@ -185,6 +185,9 @@ export function buildVillage(seed = 40): Village {
     owner: i === 0 ? null : FRIENDS[i - 1],
     isShop: false,
   }));
+  NEW_HOUSE_SPOTS.forEach(([x, y], i) => {
+    houses.push({ x, y, style: (HOUSE_SPOTS.length + i) % 4, owner: FRIENDS[HOUSE_SPOTS.length - 1 + i], isShop: false });
+  });
   houses.push({ x: SHOP_SPOT[0], y: SHOP_SPOT[1], style: SHOP_STYLE, owner: null, isShop: true });
   const residents: Resident[] = houses.flatMap((h) =>
     h.owner ? [{ friend: h.owner, x: h.x + 0.8, y: h.y + HOUSE_SIZE + 1.4 }] : [],

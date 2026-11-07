@@ -28,6 +28,12 @@ export const FAVOURITES: Record<Character, readonly string[]> = {
   tamago: ['daikon-radish', 'cabbage', 'punnet-of-strawberries', 'box-of-eggs', 'mochi'],
   ikura: ['flower-vase', 'bonsai-tree', 'wind-chime', 'paper-lantern', 'rice-cracker'],
   ebi: ['kendama', 'folding-fan', 'origami-paper', 'kite', 'dango'],
+  nori: ['mikan-orange', 'umbrella', 'radio', 'dictionary', 'kite'],
+  toro: ['diary', 'photo-frame', 'bag-of-rice', 'sweet-potato', 'bath-towel'],
+  ume: ['pickled-plum', 'blanket', 'floor-cushion', 'green-tea-leaves', 'teacup'],
+  tako: ['bar-of-soap', 'dish-sponge', 'torch', 'scissors', 'melon-bread'],
+  mochi: ['dorayaki', 'chocolate-sticks', 'pillow', 'futon', 'box-of-crayons'],
+  saba: ['apple', 'ramune-soda', 'alarm-clock', 'house-slippers', 'school-bag'],
 };
 
 /** Friendship belongs to a pair, whichever way round they are named. */

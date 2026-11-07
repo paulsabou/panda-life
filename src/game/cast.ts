@@ -10,6 +10,12 @@ export const ANIMAL_NAMES: Record<CharacterId, string> = {
   rabbit: 'Rabbit',
   deer: 'Deer',
   dog: 'Dog',
+  giraffe: 'Giraffe',
+  elephant: 'Elephant',
+  redPanda: 'Red panda',
+  raccoon: 'Raccoon',
+  hamster: 'Hamster',
+  horse: 'Horse',
 };
 
 /**
