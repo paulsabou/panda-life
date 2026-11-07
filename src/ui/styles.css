@@ -870,9 +870,16 @@ button {
   margin: 4px 0 14px;
 }
 
+.start-card.animals {
+  width: min(780px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
 .animal-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 10px;
   margin-top: 14px;
 }
@@ -905,9 +912,20 @@ button {
   outline: none;
 }
 
+@media (max-width: 720px) {
+  .animal-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 @media (max-width: 420px) {
   .animal-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .animal {
+    font-size: 13px;
   }
 }
 
